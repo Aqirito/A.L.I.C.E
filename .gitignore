@@ -1,0 +1,4 @@
+venv/
+.env
+character.json
+__pycache__

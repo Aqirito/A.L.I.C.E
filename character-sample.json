@@ -1,0 +1,25 @@
+{
+  "history": ["dont forget to add this history key"],
+  "char_name": " Go to https://zoltanai.github.io/character-editor/ to generate your character",
+  "char_persona": "",
+  "world_scenario": "",
+  "char_greeting": "",
+  "example_dialogue": "",
+  "name": "",
+  "description": "",
+  "personality": "",
+  "scenario": "",
+  "first_mes": "",
+  "mes_example": "",
+  "metadata": {
+    "version": 1,
+    "created": 1691184948611,
+    "modified": 1691184948611,
+    "source": null,
+    "tool": {
+      "name": "AI Character Editor",
+      "version": "0.5.0",
+      "url": "https://zoltanai.github.io/character-editor/"
+    }
+  }
+}
