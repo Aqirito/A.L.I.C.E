@@ -12,3 +12,7 @@
 3. Add .env follow the .env-sample.
 4. Add ```character.json``` follow ```character-sample.json``` add add your desirred character.
 5. Run ```python main.py```.
+
+```TEMPLATE_TYPE``` in .env is for changing the characteristic of the models
+  - ```pygmalion``` specials for pygmalion models
+  - ```prompt``` for all models
