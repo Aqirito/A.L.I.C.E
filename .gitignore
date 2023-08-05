@@ -2,3 +2,4 @@ venv/
 .env
 character.json
 __pycache__
+models/

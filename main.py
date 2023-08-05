@@ -12,6 +12,7 @@ env = dotenv_values(".env")
 HUGGINGFACEHUB_API_TOKEN = env['HUGGINGFACEHUB_API_TOKEN']
 MODEL_NAME_OR_PATH = env['MODEL_NAME_OR_PATH']
 MODEL_BASENAME = env['MODEL_BASENAME']
+LOCAL_FILE_PATH = os.path.abspath(os.path.join("models", MODEL_NAME_OR_PATH))
 
 current_path = os.path.dirname(os.path.realpath(__file__))
 with open(os.path.join(current_path, "character.json"), "r") as f:
@@ -21,7 +22,7 @@ with open(os.path.join(current_path, "character.json"), "r") as f:
 if len(character["history"]) == 0 and character["char_greeting"] is not None:
     print(f"{character['char_name']}: {character['char_greeting']}")
 
-loadModelAndTokenizer = loadModelAndTokenizer(model_name_or_path=MODEL_NAME_OR_PATH, model_basename=MODEL_BASENAME)
+loadModelAndTokenizer = loadModelAndTokenizer(model_name_or_path=LOCAL_FILE_PATH, model_basename=MODEL_BASENAME)
 
 model = loadModelAndTokenizer["model"]
 tokenizer = loadModelAndTokenizer["tokenizer"]
