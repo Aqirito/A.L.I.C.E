@@ -3,3 +3,4 @@ venv/
 character.json
 __pycache__
 models/
+offload/

@@ -22,7 +22,8 @@ with open(os.path.join(current_path, "character.json"), "r") as f:
 if len(character["history"]) == 0 and character["char_greeting"] is not None:
     print(f"{character['char_name']}: {character['char_greeting']}")
 
-loadModelAndTokenizer = loadModelAndTokenizer(model_name_or_path=LOCAL_FILE_PATH, model_basename=MODEL_BASENAME)
+# TODO change dynamicly between local models and cached models
+loadModelAndTokenizer = loadModelAndTokenizer(model_name_or_path=MODEL_NAME_OR_PATH, model_basename=MODEL_BASENAME)
 
 model = loadModelAndTokenizer["model"]
 tokenizer = loadModelAndTokenizer["tokenizer"]
