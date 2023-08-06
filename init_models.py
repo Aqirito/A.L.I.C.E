@@ -2,33 +2,26 @@ from transformers import AutoTokenizer, AutoModelForCausalLM, AutoConfig
 from accelerate import infer_auto_device_map, init_empty_weights
 from auto_gptq import AutoGPTQForCausalLM
 import torch
+from dotenv import dotenv_values
 
-def checkModelType(model_name_or_path):
-    model_type = None
-    is_model_type = model_name_or_path.upper()
-    if "GPTQ" in is_model_type:
-        model_type = "GPTQ"
-        return model_type
-    elif "GGML" in is_model_type:
-        model_type = "GGML"
-        return model_type
-    else:
-        return model_type
+# load ENV
+env = dotenv_values(".env")
+MODEL_TYPE = env['MODEL_TYPE']
 
 def loadModelAndTokenizer(model_name_or_path, model_basename):
-    model_type = checkModelType(model_name_or_path)
-
-    if model_type == "GPTQ":
+    if MODEL_TYPE == "GPTQ":
         tokenizer = AutoTokenizer.from_pretrained(model_name_or_path, use_fast=True)
         model = AutoGPTQForCausalLM.from_quantized(
             model_name_or_path,
             model_basename=model_basename,
             use_safetensors=True,
-            trust_remote_code=True,
+            # trust_remote_code=True,
             device_map='auto',
             use_triton=False,
             load_in_8bit=True,
-            quantize_config=None)
+            # use_auth_token=True,
+            device="cuda"
+            )
         model.seqlen = 4096
 
 
@@ -36,8 +29,7 @@ def loadModelAndTokenizer(model_name_or_path, model_basename):
             "tokenizer": tokenizer,
             "model": model
         }
-    elif model_type is None:
-        print("No model type found", model_name_or_path)
+    elif MODEL_TYPE == "SPLITTED":
         config = AutoConfig.from_pretrained(model_name_or_path)
         with init_empty_weights():
             model = AutoModelForCausalLM.from_config(config)
@@ -58,6 +50,7 @@ def loadModelAndTokenizer(model_name_or_path, model_basename):
             "model": model
         }
     else:
+        print("!!!!!No model type found!!!!!", MODEL_TYPE)
         return {
             "tokenizer": None,
             "model": None
