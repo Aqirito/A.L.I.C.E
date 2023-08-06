@@ -16,7 +16,7 @@
 #### Dotenv variables docs.
 
 * ```MODEL_NAME_OR_PATH```
-  - For local models: ***PLEASE*** don't include ```\``` otherwise the system will find the models inside huggingface hub.
+  - For local models: ***PLEASE*** don't include ```\``` otherwise the system will find the models from huggingface hub.
   - Example for huggingface hub: ```username/models-GPTQ-or-GGML```
   - Example for local model: ```Pygmalion-6b```
   
