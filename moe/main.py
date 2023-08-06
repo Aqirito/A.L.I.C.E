@@ -12,9 +12,6 @@ from . text import text_to_sequence
 current_path = os.path.abspath(os.getcwd())
 project_path =os.path.dirname(os.getcwd())
 
-print("project_path",project_path)
-print("current_path",current_path)
-
 model_info = os.path.join(current_path + "\models\TTS", "info.json")
 model = os.path.join(current_path + "\models\TTS", "vits\model.pth")
 model_config = os.path.join(current_path + "\models\TTS", "vits\config.json")
@@ -103,16 +100,15 @@ utils.load_checkpoint(model, net_g_ms)
 
 escape = False
 
-def synthesize(text: str, out_path: str, speaker_id: int):
-    print("text from synthesize", text)
+def synthesize(text: str, speed: float, out_path: str, speaker_id: int):
     if n_symbols != 0:
         if not emotion_embedding:
-            length_scale, text = get_label_value(
-                text, 'LENGTH', 0.6, 'length scale')
-            noise_scale, text = get_label_value(
-                text, 'NOISE', 0.667, 'noise scale')
-            noise_scale_w, text = get_label_value(
-                text, 'NOISEW', 0.8, 'deviation of noise')
+            # length_scale, text = get_label_value(
+            #     text, 'LENGTH', 1.0, 'length scale')
+            # noise_scale, text = get_label_value(
+            #     text, 'NOISE', 0.667, 'noise scale')
+            # noise_scale_w, text = get_label_value(
+            #     text, 'NOISEW', 0.8, 'deviation of noise')
             cleaned, text = get_label(text, 'CLEANED')
 
             stn_tst = get_text(text, hps_ms, cleaned=cleaned)
@@ -123,8 +119,8 @@ def synthesize(text: str, out_path: str, speaker_id: int):
                 x_tst = stn_tst.unsqueeze(0)
                 x_tst_lengths = LongTensor([stn_tst.size(0)])
                 sid = LongTensor([speaker_id])
-                audio = net_g_ms.infer(x_tst, x_tst_lengths, sid=sid, noise_scale=noise_scale,
-                                        noise_scale_w=noise_scale_w, length_scale=length_scale)[0][0, 0].data.cpu().float().numpy()
+                audio = net_g_ms.infer(x_tst, x_tst_lengths, sid=sid, noise_scale=.667,
+                                        noise_scale_w=.8, length_scale=1.0 / speed)[0][0, 0].data.cpu().float().numpy()
       
             write(out_path, hps_ms.data.sampling_rate, audio)
             print('Successfully saved!')
