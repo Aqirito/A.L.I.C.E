@@ -12,12 +12,13 @@
 *the default voice is from character named Kamisato Yayaka from video game called Genshin Impact.*
 
 ***TODO prevent chat from auto generating by itself***
-
-1. Create python virtual environment ```python -m venv venv && source venv/bin/activate```.
-2. Install the requirements ```pip install -r requirements.txt```.
-3. Add .env follow the .env-sample.
-4. Add ```character.json``` follow ```character-sample.json``` or add your desirred character.
-5. Run ```python main.py```.
+1. create folder name LLM ```models/LLM``` and put your local model inside LLM directory.
+2. create folder name TTS and vits ```models/TTS/vits``` and put your local VITS TTS model inside vits directory.
+3. Create python virtual environment ```python -m venv venv && source venv/bin/activate```.
+4. Install the requirements ```pip install -r requirements.txt```.
+5. Add .env follow the .env-sample.
+6. Add ```character.json``` follow ```character-sample.json``` or add your desirred character.
+7. Run ```python main.py```.
 
 #### Dotenv variables docs.
 
