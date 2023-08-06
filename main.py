@@ -10,7 +10,6 @@ from moe.main import synthesize
 
 # load ENV
 env = dotenv_values(".env")
-HUGGINGFACEHUB_API_TOKEN = env['HUGGINGFACEHUB_API_TOKEN']
 MODEL_NAME_OR_PATH = env['MODEL_NAME_OR_PATH']
 MODEL_BASENAME = env['MODEL_BASENAME']
 if "/" not in MODEL_NAME_OR_PATH:
