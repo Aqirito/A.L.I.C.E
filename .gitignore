@@ -5,3 +5,4 @@ __pycache__
 models/LLM/*
 models/TTS/vits/*
 offload/
+*.wav
