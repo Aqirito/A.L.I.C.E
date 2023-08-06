@@ -13,14 +13,13 @@ env = dotenv_values(".env")
 HUGGINGFACEHUB_API_TOKEN = env['HUGGINGFACEHUB_API_TOKEN']
 MODEL_NAME_OR_PATH = env['MODEL_NAME_OR_PATH']
 MODEL_BASENAME = env['MODEL_BASENAME']
+if "/" not in MODEL_NAME_OR_PATH:
+    MODEL_NAME_OR_PATH = os.path.abspath(os.path.join("models/LLM", MODEL_NAME_OR_PATH))
 
 current_path = os.path.dirname(os.path.realpath(__file__))
 with open(os.path.join(current_path, "character.json"), "r") as f:
     f.seek(0)  # Move to the beginning of the file
     character = json.loads(f.read())
-
-if len(character["history"]) == 0 and character["char_greeting"] is not None:
-    print(f"{character['char_name']}: {character['char_greeting']}")
 
 loadModelAndTokenizer = loadModelAndTokenizer(model_name_or_path=MODEL_NAME_OR_PATH, model_basename=MODEL_BASENAME)
 
@@ -36,7 +35,7 @@ pipeline = pipeline(
     "text-generation",
     model=model,
     tokenizer=tokenizer,
-    max_length=128,
+    max_length=256,
     max_new_tokens=128,
     temperature=0.7,
     top_p=0.4,
@@ -53,12 +52,13 @@ prompt = PromptTemplate(template=template, input_variables=["question"]) # gener
 while True:
     question = input("You: ")
 
+    # using pipeline from Langchain
     llm_chain = LLMChain(prompt=prompt, llm=llm) # create a chain
     bot_reply = llm_chain.run(question) # run the chain
 
-    replace_name = bot_reply.replace('<USER>', character['user_name']).replace(' ', '[EN]')
+    replace_name = bot_reply.replace('<USER>', character['user_name'])
 
-    print('[EN]'+replace_name+'[EN]')
+    print(replace_name)
 
     # Insert the chat history
     character['history'].append(f"You: {question}")
@@ -68,4 +68,4 @@ while True:
     with open(os.path.join(current_path, "character.json"), "w") as outfile:
         json.dump(character, outfile)
 
-    synthesize(text='[EN]'+replace_name+'[EN]', out_path="reply.wav", speaker_id=19)
+    synthesize(text='[EN]'+replace_name+'[EN]', speed=.77, out_path="reply.wav", speaker_id=607)

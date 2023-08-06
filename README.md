@@ -13,6 +13,28 @@
 4. Add ```character.json``` follow ```character-sample.json``` add add your desirred character.
 5. Run ```python main.py```.
 
-```TEMPLATE_TYPE``` in .env is for changing the characteristic of the models
-  - ```pygmalion``` specials for pygmalion models
-  - ```prompt``` for all models
+#### Dotenv variables docs.
+
+* ```MODEL_NAME_OR_PATH```
+  - For local models: ***PLEASE*** don't include ***"\"*** otherwise the system will find the models inside huggingface hub.
+  - Example for huggingface hub: ```username/models-GPTQ-or-GGML```
+  - Example for local model: ```Pygmalion-6b```
+  
+* ```MODEL_BASENAME```
+  - the .safetensors file name inside the model directories". don't include the after the '.' of the file
+  - this only for GPTQ models
+
+* ```TEMPLATE_TYPE```  for changing the characteristic of the models.
+  - ```pygmalion``` roleplay, specials for pygmalion models.
+  - ```prompt``` for all models.
+
+* ```MODEL_TYPE``` the model types.
+  - ```GPTQ```
+  - ```GGML```
+  - ```SPLITTED```
+
+#### Credits: 
+* [CjangCjengh](https://github.com/CjangCjengh)
+* [Francis-Komizu](https://github.com/Francis-Komizu)
+* [ZoltanAI](https://github.com/ZoltanAI)
+* [Aqirito](https://github.com/Aqirito)
