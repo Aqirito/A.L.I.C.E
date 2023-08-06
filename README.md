@@ -10,13 +10,13 @@
 1. Create python virtual environment ```python -m venv venv && source venv/bin/activate```.
 2. Install the requirements ```pip install -r requirements.txt```.
 3. Add .env follow the .env-sample.
-4. Add ```character.json``` follow ```character-sample.json``` add add your desirred character.
+4. Add ```character.json``` follow ```character-sample.json``` or add your desirred character.
 5. Run ```python main.py```.
 
 #### Dotenv variables docs.
 
 * ```MODEL_NAME_OR_PATH```
-  - For local models: ***PLEASE*** don't include ***"\"*** otherwise the system will find the models inside huggingface hub.
+  - For local models: ***PLEASE*** don't include ***\*** otherwise the system will find the models inside huggingface hub.
   - Example for huggingface hub: ```username/models-GPTQ-or-GGML```
   - Example for local model: ```Pygmalion-6b```
   
