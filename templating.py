@@ -14,6 +14,9 @@ with open(os.path.join(current_path, "character.json"), "r") as f:
     
 def setTemplate():
     if TEMPLATE_TYPE == "pygmalion":
+        if len(character["history"]) == 0 and character["char_greeting"] is not None:
+            print(f"{character['char_name']}: {character['char_greeting']}")
+  
         template = build_prompt_for(history=character['history'],
                               user_message='{question}',
                               char_name=character['char_name'],
