@@ -2,3 +2,6 @@ venv/
 .env
 character.json
 __pycache__
+models/LLM/*
+models/TTS/vits/*
+offload/
