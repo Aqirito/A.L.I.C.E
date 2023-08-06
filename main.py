@@ -6,6 +6,7 @@ from init_models import loadModelAndTokenizer
 import json
 import os
 from templating import setTemplate
+from moe.main import synthesize
 
 # load ENV
 env = dotenv_values(".env")
@@ -57,9 +58,9 @@ while True:
     llm_chain = LLMChain(prompt=prompt, llm=llm) # create a chain
     bot_reply = llm_chain.run(question) # run the chain
 
-    replace_name = bot_reply.replace('<USER>', character['user_name'])
+    replace_name = bot_reply.replace('<USER>', character['user_name']).replace(' ', '[EN]')
 
-    print(replace_name)
+    print('[EN]'+replace_name+'[EN]')
 
     # Insert the chat history
     character['history'].append(f"You: {question}")
@@ -68,3 +69,5 @@ while True:
     # Save the chat history to a JSON file
     with open(os.path.join(current_path, "character.json"), "w") as outfile:
         json.dump(character, outfile)
+
+    synthesize(text='[EN]'+replace_name+'[EN]', out_path="reply.wav", speaker_id=19)
