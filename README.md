@@ -16,6 +16,7 @@ My specs:
 *the default voice is from character named Kamisato Yayaka from video game called Genshin Impact.*
 
 *TODO: implement Whisper AI*
+### How to install
 1. Create ```memories.json``` follow the ```memories-sample.json``` and add your name inside it.
 2. Create folder name LLM ```models/LLM``` and put your local model inside LLM directory.
 3. Create folder name TTS and vits ```models/TTS/vits``` and put your local VITS TTS model inside vits directory.
