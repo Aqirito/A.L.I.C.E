@@ -15,6 +15,11 @@ project_path =os.path.dirname(os.getcwd())
 model_info = os.path.join(current_path + "\models\TTS", "info.json")
 model = os.path.join(current_path + "\models\TTS", "vits\model.pth")
 model_config = os.path.join(current_path + "\models\TTS", "vits\config.json")
+current_path = os.path.dirname(os.path.realpath(__file__))
+
+with open(os.path.join(current_path, "speakers.json"), "r", encoding='utf-8') as f:
+    f.seek(0)  # Move to the beginning of the file
+    J_speakers = json.loads(f.read())
 
 def ex_print(text, escape=False):
     if escape:
@@ -52,11 +57,14 @@ def get_text(text, hps, cleaned=False):
     return text_norm
 
 def print_speakers(speakers, escape=False):
-    if len(speakers) > 100:
-        return
-    print('ID\tSpeaker')
+    # print('ID\tSpeaker')
     for id, name in enumerate(speakers):
-        ex_print(str(id) + '\t' + name, escape)
+        a = f"{id}: {name}"
+        J_speakers['speakers'].append(a)
+        # Save the chat history to a JSON file
+        with open(os.path.join(current_path, "speakers.json"), "w", encoding='utf-8') as outfile:
+            json.dump(J_speakers, outfile, ensure_ascii=False, indent=2)
+        # ex_print(str(id) + '\t' + name, escape)
 
 def get_speaker_id(speaker_id):
     try:
@@ -113,7 +121,7 @@ def synthesize(text: str, speed: float, out_path: str, speaker_id: int):
 
             stn_tst = get_text(text, hps_ms, cleaned=cleaned)
 
-            print_speakers(speakers, escape)
+            # print_speakers(speakers, escape) # print and save speakers.json
             speaker_id = get_speaker_id(speaker_id)
             with no_grad():
                 x_tst = stn_tst.unsqueeze(0)
@@ -123,4 +131,3 @@ def synthesize(text: str, speed: float, out_path: str, speaker_id: int):
                                         noise_scale_w=.8, length_scale=1.0 / speed)[0][0, 0].data.cpu().float().numpy()
       
             write(out_path, hps_ms.data.sampling_rate, audio)
-            print('Successfully saved!')
