@@ -5,7 +5,7 @@
 *pip 23.2.1*
 *langchain 0.0.245*
 
-My specs:
+### My specs:
 * Nvidia RTX 3060 12 GB
 * Intel i5 12400
 
@@ -27,7 +27,7 @@ My specs:
 8. Add ```character.json``` follow ```character-sample.json``` or add your desirred character.
 9. Run ```python main.py```.
 
-#### Dotenv variables docs.
+### Dotenv variables docs.
 
 * ```MODEL_NAME_OR_PATH```
   - You must download the model manually and save it to the ```model/LLMS/``` folder. Model name from hub is not working for a moment.
@@ -45,7 +45,7 @@ My specs:
 
 * ```SPEAKER_ID``` go to [speakers.json](models/TTS/speakers.json) to see all the speaker_id
 
-#### Credits: 
+### Credits: 
 * [CjangCjengh](https://github.com/CjangCjengh)
 * [Francis-Komizu](https://github.com/Francis-Komizu)
 * [ZoltanAI](https://github.com/ZoltanAI)
