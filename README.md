@@ -15,6 +15,11 @@
 
 *the default voice is from character named Kamisato Yayaka from video game called Genshin Impact.*
 
+Model tested:
+* [TheBloke/Pygmalion-13B-SuperHOT-8K-GPTQ](https://huggingface.co/TheBloke/Pygmalion-13B-SuperHOT-8K-GPTQ/tree/main)
+* [Llama-2-7b-Chat-GPTQ](https://huggingface.co/TheBloke/Llama-2-7b-Chat-GPTQ)
+* [pygmalion-6b](PygmalionAI/pygmalion-6b)
+
 *TODO: implement Whisper AI*
 ### How to install
 1. Create ```memories.json``` follow the ```memories-sample.json``` and add your name inside it.
