@@ -25,6 +25,7 @@ decorator==5.1.1
 dill==0.3.7
 einops==0.6.1
 eng-to-ipa==0.0.2
+exllama @ git+https://github.com/jllllll/exllama@1dd02afa9c1c5bccc3e2abebc6ba4838fbdaf503
 filelock==3.9.0
 flatbuffers==23.5.26
 frozenlist==1.4.0
@@ -90,6 +91,7 @@ ruamel.yaml.clib==0.2.7
 safetensors==0.3.1
 scikit-learn==1.3.0
 scipy==1.11.1
+sentencepiece==0.1.99
 six==1.16.0
 soundfile==0.12.1
 soxr==0.3.5
