@@ -17,9 +17,9 @@ model = os.path.join(current_path + "\models\TTS", "vits\model.pth")
 model_config = os.path.join(current_path + "\models\TTS", "vits\config.json")
 current_path = os.path.dirname(os.path.realpath(__file__))
 
-with open(os.path.join(current_path, "speakers.json"), "r", encoding='utf-8') as f:
-    f.seek(0)  # Move to the beginning of the file
-    J_speakers = json.loads(f.read())
+# with open(os.path.join(current_path, "speakers.json"), "r", encoding='utf-8') as f:
+#     f.seek(0)  # Move to the beginning of the file
+#     J_speakers = json.loads(f.read())
 
 def ex_print(text, escape=False):
     if escape:
@@ -56,15 +56,15 @@ def get_text(text, hps, cleaned=False):
     text_norm = LongTensor(text_norm)
     return text_norm
 
-def print_speakers(speakers, escape=False):
-    # print('ID\tSpeaker')
-    for id, name in enumerate(speakers):
-        a = f"{id}: {name}"
-        J_speakers['speakers'].append(a)
-        # Save the chat history to a JSON file
-        with open(os.path.join(current_path, "speakers.json"), "w", encoding='utf-8') as outfile:
-            json.dump(J_speakers, outfile, ensure_ascii=False, indent=2)
-        # ex_print(str(id) + '\t' + name, escape)
+# def print_speakers(speakers, escape=False):
+#     # print('ID\tSpeaker')
+#     for id, name in enumerate(speakers):
+#         a = f"{id}: {name}"
+#         J_speakers['speakers'].append(a)
+#         # Save the chat history to a JSON file
+#         with open(os.path.join(current_path, "speakers.json"), "w", encoding='utf-8') as outfile:
+#             json.dump(J_speakers, outfile, ensure_ascii=False, indent=2)
+#         # ex_print(str(id) + '\t' + name, escape)
 
 def get_speaker_id(speaker_id):
     try:
