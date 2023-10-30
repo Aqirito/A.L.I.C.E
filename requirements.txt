@@ -25,7 +25,7 @@ decorator==5.1.1
 dill==0.3.7
 einops==0.6.1
 eng-to-ipa==0.0.2
-exllama @ git+https://github.com/jllllll/exllama@1dd02afa9c1c5bccc3e2abebc6ba4838fbdaf503
+exllama @ git+https://github.com/jllllll/exllama@4ded203bea0719349a4ee5bd7221db5035062518
 filelock==3.9.0
 flatbuffers==23.5.26
 frozenlist==1.4.0

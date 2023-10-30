@@ -27,7 +27,7 @@ Model tested:
 3. Create folder name TTS and vits ```models/TTS/vits``` and put your local VITS TTS model inside vits directory.
 4. Create and activate python virtual environment ```python -m venv venv && source venv/bin/activate```
 5. Install wheel package: ```pip install wheel```
-5. Install [PyTorch](https://pytorch.org/get-started/previous-versions/)
+5. Install PyTorch: ```pip install torch==2.0.0+cu117 torchaudio==2.0.1+cu117 torchvision==0.15.1+cu117 --extra-index-url https://download.pytorch.org/whl/cu117```
 6. Install the requirements ```pip install -r requirements.txt```.
 7. Add .env follow the .env-sample.
 8. Add ```character.json``` follow ```character-sample.json``` or add your desirred character.
