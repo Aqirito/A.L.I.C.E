@@ -20,7 +20,7 @@ Model tested:
 * [Llama-2-7b-Chat-GPTQ](https://huggingface.co/TheBloke/Llama-2-7b-Chat-GPTQ)
 * [pygmalion-6b](PygmalionAI/pygmalion-6b)
 
-*TODO: implement Whisper AI*
+
 ### How to install
 1. Create ```memories.json``` follow the ```memories-sample.json``` and add your name inside it.
 2. Create folder name LLM ```models/LLM``` and put your local model inside LLM directory.
@@ -45,9 +45,9 @@ Model tested:
   - ```prompt``` for all models.
 
 * ```MODEL_TYPE``` the model types.
-  - ```GPTQ```
-  - ```GGML```
-  - ```SPLITTED```
+  - ```GPTQ```     Quantized models for consumer grade GPU like me 😝.
+  - ```GGML```     CPU based models
+  - ```SPLITTED``` multiple .safetensors file
 
 * ```SPEAKER_ID``` go to [speakers.json](models/TTS/speakers.json) to see all the speaker_id
 
