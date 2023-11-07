@@ -1,0 +1,8 @@
+{
+  "template_type": "pygmalion",
+  "model_type": "GPTQ",
+  "model_loader": "ExLlama",
+  "language": "[EN]",
+  "speed": 0.77,
+  "speaker_id": 607
+}
