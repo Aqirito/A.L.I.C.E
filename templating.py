@@ -1,11 +1,18 @@
 import json
 import os
-from dotenv import dotenv_values
+# from dotenv import dotenv_values
 from prompting import build_prompt_for
 
-# load ENV
-env = dotenv_values(".env")
-TEMPLATE_TYPE = env['TEMPLATE_TYPE']
+project_path = os.path.abspath(os.getcwd())
+
+with open(os.path.join(project_path, "configs/system_cfg.json"), "r") as f:
+    f.seek(0)  # Move to the beginning of the file
+    system_cfg = json.loads(f.read())
+
+# # load ENV
+# env = dotenv_values(".env")
+
+TEMPLATE_TYPE = system_cfg['template_type']
 current_path = os.path.dirname(os.path.realpath(__file__))
     
 def setTemplate():
