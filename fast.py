@@ -212,8 +212,13 @@ def llm_loader():
 
 @app.put("/setings/llm_loader", response_model=UpdateLlm)
 def llm_loader(llm: UpdateLlm):
+    global llm_loader_cfg
     with open(os.path.join(project_path, "configs/llm_loader_cfg.json"), "w", encoding='utf-8') as outfile:
         json.dump(json.loads(llm.json()), outfile, ensure_ascii=False, indent=2)
+
+    with open(os.path.join(project_path, "configs/llm_loader_cfg.json"), "r") as f:
+        f.seek(0)  # Move to the beginning of the file
+        llm_loader_cfg = json.loads(f.read())
     return llm
 
 @app.get("/setings/system")
@@ -222,6 +227,7 @@ def system_settings():
 
 @app.put("/setings/system", response_model=SystemSchema)
 def system_settings(system: SystemSchema):
+    global system_cfg
     """
     template_type: # for now is 'pygmalion' and 'prompt'
     model_type: # GPTQ
@@ -233,6 +239,10 @@ def system_settings(system: SystemSchema):
     
     with open(os.path.join(project_path, "configs/system_cfg.json"), "w", encoding='utf-8') as outfile:
         json.dump(json.loads(system.json()), outfile, ensure_ascii=False, indent=2)
+    with open(os.path.join(project_path, "configs/system_cfg.json"), "r") as f:
+        f.seek(0)  # Move to the beginning of the file
+        system_cfg = json.loads(f.read())
+
     return system
 
 @app.get("/items/{item_id}")
