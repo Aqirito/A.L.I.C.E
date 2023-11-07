@@ -3,10 +3,10 @@ from langchain import PromptTemplate, LLMChain
 from langchain import HuggingFacePipeline
 from transformers import logging
 from dotenv import dotenv_values
-from init_models import loadModelAndTokenizer
+from utils.init_models import loadModelAndTokenizer
 import json
 import os
-from templating import setTemplate
+from utils.templating import setTemplate
 from moe.main import synthesize
 from exllama.model import ExLlamaCache
 from exllama.generator import ExLlamaGenerator
@@ -55,11 +55,11 @@ init_model = loadModelAndTokenizer(model_name_or_path=MODEL_NAME_OR_PATH, model_
 model = init_model["model"]
 tokenizer = init_model["tokenizer"]
 
-with open(os.path.join(current_path, "character.json"), "r") as f:
+with open(os.path.join(project_path, "configs/character.json"), "r") as f:
     f.seek(0)  # Move to the beginning of the file
     character = json.loads(f.read())
 
-with open(os.path.join(current_path, "memories.json"), "r") as f:
+with open(os.path.join(project_path, "configs/memories.json"), "r") as f:
     f.seek(0)  # Move to the beginning of the file
     memories = json.loads(f.read())
 
@@ -77,7 +77,7 @@ def saveReply(question, bot_response):
     memories['history'].append(f"{character['char_name']}:{replace_name_reply}")
 
     # Save the chat history to a JSON file
-    with open(os.path.join(current_path, "memories.json"), "w", encoding='utf-8') as outfile:
+    with open(os.path.join(project_path, "configs/memories.json"), "w", encoding='utf-8') as outfile:
         json.dump(memories, outfile, ensure_ascii=False, indent=2)
 
     synthesize(text=LANGUAGE+replace_name_reply+LANGUAGE, speed=float(SPEED), out_path="reply.wav", speaker_id=int(SPEAKER_ID))
@@ -132,11 +132,11 @@ def chat(ChatModel: ChatModel):
             memories['history'].append(f"{character['char_name']}:{replace_name_reply}")
 
             # Save the chat history to a JSON file
-            with open(os.path.join(current_path, "memories.json"), "w", encoding='utf-8') as outfile:
+            with open(os.path.join(project_path, "configs/memories.json"), "w", encoding='utf-8') as outfile:
                 json.dump(memories, outfile, ensure_ascii=False, indent=2)
 
             synthesize(text=LANGUAGE+replace_name_reply+LANGUAGE, speed=float(SPEED), out_path="reply.wav", speaker_id=int(SPEAKER_ID))
-            file_path = os.path.join(current_path, "reply.wav")
+            file_path = os.path.join(project_path, "reply.wav")
 
             try:
                 with open(file_path, "rb") as audio_file:
@@ -183,11 +183,11 @@ def chat(ChatModel: ChatModel):
             memories['history'].append(f"{character['char_name']}:{replace_name_reply}")
 
             # Save the chat history to a JSON file
-            with open(os.path.join(current_path, "memories.json"), "w", encoding='utf-8') as outfile:
+            with open(os.path.join(project_path, "configs/memories.json"), "w", encoding='utf-8') as outfile:
                 json.dump(memories, outfile, ensure_ascii=False, indent=2)
 
             synthesize(text=LANGUAGE+replace_name_reply+LANGUAGE, speed=float(SPEED), out_path="reply.wav", speaker_id=int(SPEAKER_ID))
-            file_path = os.path.join(current_path, "reply.wav")
+            file_path = os.path.join(project_path, "reply.wav")
 
             try:
                 with open(file_path, "rb") as audio_file:
