@@ -1,7 +1,7 @@
 import json
 import os
 # from dotenv import dotenv_values
-from prompting import build_prompt_for
+from .prompting import build_prompt_for
 
 project_path = os.path.abspath(os.getcwd())
 
@@ -17,12 +17,12 @@ current_path = os.path.dirname(os.path.realpath(__file__))
     
 def setTemplate():
     # inside setTemplate to reload the character everytime
-    with open(os.path.join(current_path, "character.json"), "r", encoding='utf-8') as f:
+    with open(os.path.join(project_path, "configs/character.json"), "r", encoding='utf-8') as f:
         f.seek(0)  # Move to the beginning of the file
         character = json.loads(f.read())
 
     # inside setTemplate to reload the memories everytime
-    with open(os.path.join(current_path, "memories.json"), "r", encoding='utf-8') as f:
+    with open(os.path.join(project_path, "configs/memories.json"), "r", encoding='utf-8') as f:
         f.seek(0)  # Move to the beginning of the file
         memories = json.loads(f.read())
   
