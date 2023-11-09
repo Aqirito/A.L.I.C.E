@@ -4,6 +4,8 @@ from auto_gptq import AutoGPTQForCausalLM
 import os
 import glob
 
+global system_cfg
+
 current_path = os.path.dirname(os.path.realpath(__file__))
 project_path = os.path.abspath(os.getcwd())
 
