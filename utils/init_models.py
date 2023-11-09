@@ -4,16 +4,16 @@ from auto_gptq import AutoGPTQForCausalLM
 import os
 import glob
 
-global system_cfg
+global llm_loader_settings
 
 current_path = os.path.dirname(os.path.realpath(__file__))
 project_path = os.path.abspath(os.getcwd())
 
-with open(os.path.join(project_path, "configs/system_cfg.json"), "r") as f:
+with open(os.path.join(project_path, "configs/llm_loader_settings.json"), "r") as f:
     f.seek(0)  # Move to the beginning of the file
-    system_cfg = json.loads(f.read())
+    llm_loader_settings = json.loads(f.read())
 
-MODEL_LOADER = system_cfg['model_loader']
+MODEL_LOADER = llm_loader_settings['model_loader']
 
 def loadModelAndTokenizer(model_name_or_path, model_basename):
     if MODEL_LOADER == "AutoGPTQ":
@@ -70,9 +70,8 @@ def AutoGPTQLoader(model_name_or_path, model_basename):
 
 def ExLlamaLoader(model_name_or_path):
     # from init_models import loadModelAndTokenizer
-    from exllama.model import ExLlama, ExLlamaCache, ExLlamaConfig
+    from exllama.model import ExLlama, ExLlamaConfig
     from exllama.tokenizer import ExLlamaTokenizer
-    from exllama.generator import ExLlamaGenerator
 
     tokenizer_path = os.path.join(model_name_or_path, "tokenizer.model")
     model_config_path = os.path.join(model_name_or_path, "config.json")

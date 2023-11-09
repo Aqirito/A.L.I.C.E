@@ -29,7 +29,7 @@ def build_prompt_for(
 
         # TODO(11b): Arbitrary limit. See if it's possible to vary this
         # based on available context size and VRAM instead.
-        *concatenated_history[-800:],
+        *concatenated_history[-30:],
         # *concatenated_history,
         f"You: {user_message}",
         f"{char_name}:",

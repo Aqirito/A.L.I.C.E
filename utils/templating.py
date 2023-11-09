@@ -14,13 +14,13 @@ project_path = os.path.abspath(os.getcwd())
 current_path = os.path.dirname(os.path.realpath(__file__))
     
 def setTemplate():
-    global system_cfg
+    global llm_loader_settings
     
     # inside setTemplate to reload the character everytime
-    with open(os.path.join(project_path, "configs/system_cfg.json"), "r") as f:
+    with open(os.path.join(project_path, "configs/llm_loader_settings.json"), "r") as f:
         f.seek(0)  # Move to the beginning of the file
-        system_cfg = json.loads(f.read())
-        TEMPLATE_TYPE = system_cfg['template_type']
+        llm_loader_settings = json.loads(f.read())
+        TEMPLATE_TYPE = llm_loader_settings['template_type']
 
     # inside setTemplate to reload the character everytime
     with open(os.path.join(project_path, "configs/character.json"), "r", encoding='utf-8') as f:
