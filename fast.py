@@ -15,7 +15,7 @@ import glob
 
 
 from typing import Union
-from fastapi import FastAPI, HTTPException
+from fastapi import APIRouter, FastAPI, HTTPException
 from fastapi.responses import JSONResponse
 
 from schemas import ExllamaCfg, UpdateLlm, SystemSchema, ChatModel
@@ -25,47 +25,36 @@ app = FastAPI()
 current_path = os.path.dirname(os.path.realpath(__file__))
 project_path = os.path.abspath(os.getcwd())
 
-with open(os.path.join(project_path, "configs/system_cfg.json"), "r") as f:
-    f.seek(0)  # Move to the beginning of the file
-    system_cfg = json.loads(f.read())
+def loadConfigs():
+    global memories, character, llm_loader_cfg, system_cfg
+    global MODEL_TYPE, MODEL_LOADER, LANGUAGE, SPEED, SPEAKER_ID
 
-# # load ENV
-env = dotenv_values(".env")
+    with open(os.path.join(project_path, "configs/system_cfg.json"), "r") as f:
+        f.seek(0)  # Move to the beginning of the file
+        system_cfg = json.loads(f.read())
+        print("system from fast", system_cfg)
 
-MODEL_NAME_OR_PATH = env['MODEL_NAME_OR_PATH']
-MODEL_TYPE = system_cfg['model_type']
-MODEL_LOADER = system_cfg['model_loader']
-LANGUAGE = system_cfg['language']
-SPEED = system_cfg['speed']
-SPEAKER_ID = system_cfg['speaker_id']
+    MODEL_TYPE = system_cfg['model_type']
+    MODEL_LOADER = system_cfg['model_loader']
+    LANGUAGE = system_cfg['language']
+    SPEED = system_cfg['speed']
+    SPEAKER_ID = system_cfg['speaker_id']
+    
+    
+    with open(os.path.join(project_path, "configs/character.json"), "r") as f:
+        f.seek(0)  # Move to the beginning of the file
+        character = json.loads(f.read())
+        print("character", character)
 
-if "/" not in MODEL_NAME_OR_PATH:
-    MODEL_NAME_OR_PATH = os.path.abspath(os.path.join("models/LLM", MODEL_NAME_OR_PATH))
+    with open(os.path.join(project_path, "configs/memories.json"), "r") as f:
+        f.seek(0)  # Move to the beginning of the file
+        memories = json.loads(f.read())
+        print("memories", memories)
 
-st_pattern = os.path.join(MODEL_NAME_OR_PATH, "*.safetensors")
-try:
-    MODEL_BASENAME = glob.glob(st_pattern)[0] # find all files in the directory that match the * pattern
-except:
-    MODEL_BASENAME=None
-
-
-init_model = loadModelAndTokenizer(model_name_or_path=MODEL_NAME_OR_PATH, model_basename=MODEL_BASENAME)
-# init_model = ""
-
-model = init_model["model"]
-tokenizer = init_model["tokenizer"]
-
-with open(os.path.join(project_path, "configs/character.json"), "r") as f:
-    f.seek(0)  # Move to the beginning of the file
-    character = json.loads(f.read())
-
-with open(os.path.join(project_path, "configs/memories.json"), "r") as f:
-    f.seek(0)  # Move to the beginning of the file
-    memories = json.loads(f.read())
-
-with open(os.path.join(project_path, "configs/llm_loader_cfg.json"), "r") as f:
-    f.seek(0)  # Move to the beginning of the file
-    llm_loader_cfg = json.loads(f.read())
+    with open(os.path.join(project_path, "configs/llm_loader_cfg.json"), "r") as f:
+        f.seek(0)  # Move to the beginning of the file
+        llm_loader_cfg = json.loads(f.read())
+        print("llm_loader_cfg", llm_loader_cfg)
 
 def saveReply(question, bot_response):
     
@@ -82,12 +71,60 @@ def saveReply(question, bot_response):
 
     synthesize(text=LANGUAGE+replace_name_reply+LANGUAGE, speed=float(SPEED), out_path="reply.wav", speaker_id=int(SPEAKER_ID))
 
+llm_init = APIRouter(
+  prefix="/llm_init",
+  tags=["Initialize LLM models and configs"],
+  responses={404: {"description": "Not found"}},
+)
+@llm_init.get("/init_configs")
+def load_configs():
+    # init configs
+    loadConfigs()
+    return {
+        "model_type": MODEL_TYPE,
+        "model_loader": MODEL_LOADER,
+        "language": LANGUAGE,
+        "speed": SPEED,
+        "speaker_id": SPEAKER_ID
+    }
 
-@app.get("/")
-def read_root():
-    return {"Hello": "World"}
+@llm_init.get("/init_model")
+def init_models():
 
-@app.post("/chat")
+    global init_model, model, tokenizer
+    global MODEL_NAME_OR_PATH
+
+    # load ENV
+    env = dotenv_values(".env")
+    MODEL_NAME_OR_PATH = env['MODEL_NAME_OR_PATH']
+
+    if "/" not in MODEL_NAME_OR_PATH:
+        MODEL_NAME_OR_PATH = os.path.abspath(os.path.join("models/LLM", MODEL_NAME_OR_PATH))
+
+    st_pattern = os.path.join(MODEL_NAME_OR_PATH, "*.safetensors")
+    try:
+        MODEL_BASENAME = glob.glob(st_pattern)[0] # find all files in the directory that match the * pattern
+    except:
+        MODEL_BASENAME=None
+
+
+    init_model = loadModelAndTokenizer(model_name_or_path=MODEL_NAME_OR_PATH, model_basename=MODEL_BASENAME)
+    # init_model = ""
+
+    model = init_model["model"]
+    tokenizer = init_model["tokenizer"]
+    return {
+        model: model,
+        tokenizer: tokenizer
+    }
+
+
+llm_router = APIRouter(
+  prefix="/llm",
+  tags=["LLM"],
+  responses={404: {"description": "Not found"}},
+)
+@llm_router.post("/chat")
 def chat(ChatModel: ChatModel):
     if MODEL_TYPE == "GPTQ":
         if MODEL_LOADER == "AutoGPTQ":
@@ -206,28 +243,32 @@ def chat(ChatModel: ChatModel):
         raise HTTPException(status_code=404, detail=f"Model Type Not Found: {MODEL_TYPE}")
 
 
-@app.get("/setings/llm_loader")
+setings_router = APIRouter(
+  prefix="/settings",
+  tags=["Settings and Configurations"],
+  responses={404: {"description": "Not found"}},
+)
+@setings_router.get("/llm_loader")
 def llm_loader():
     return llm_loader_cfg
 
-@app.put("/setings/llm_loader", response_model=UpdateLlm)
+
+@setings_router.put("/llm_loader", response_model=UpdateLlm)
 def llm_loader(llm: UpdateLlm):
-    global llm_loader_cfg
     with open(os.path.join(project_path, "configs/llm_loader_cfg.json"), "w", encoding='utf-8') as outfile:
         json.dump(json.loads(llm.json()), outfile, ensure_ascii=False, indent=2)
 
-    with open(os.path.join(project_path, "configs/llm_loader_cfg.json"), "r") as f:
-        f.seek(0)  # Move to the beginning of the file
-        llm_loader_cfg = json.loads(f.read())
+    # reload configs
+    loadConfigs()
+
     return llm
 
-@app.get("/setings/system")
+@setings_router.get("/system")
 def system_settings():
     return system_cfg
 
-@app.put("/setings/system", response_model=SystemSchema)
+@setings_router.put("/system", response_model=SystemSchema)
 def system_settings(system: SystemSchema):
-    global system_cfg
     """
     template_type: # for now is 'pygmalion' and 'prompt'
     model_type: # GPTQ
@@ -239,12 +280,15 @@ def system_settings(system: SystemSchema):
     
     with open(os.path.join(project_path, "configs/system_cfg.json"), "w", encoding='utf-8') as outfile:
         json.dump(json.loads(system.json()), outfile, ensure_ascii=False, indent=2)
-    with open(os.path.join(project_path, "configs/system_cfg.json"), "r") as f:
-        f.seek(0)  # Move to the beginning of the file
-        system_cfg = json.loads(f.read())
+
+    # reload configs
+    loadConfigs()
 
     return system
 
-@app.get("/items/{item_id}")
-def read_item(item_id: int, q: Union[str, None] = None):
-    return {"item_id": item_id, "q": q}
+
+
+
+app.include_router(llm_init)
+app.include_router(llm_router)
+app.include_router(setings_router)
