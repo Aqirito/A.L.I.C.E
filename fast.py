@@ -7,6 +7,7 @@ from utils.init_models import loadModelAndTokenizer
 import json
 import os
 from utils.templating import setTemplate
+from utils.edgeTTS import run_tts
 from moe.main import synthesize
 from exllama.model import ExLlamaCache
 from exllama.generator import ExLlamaGenerator
@@ -18,7 +19,7 @@ from typing import Union
 from fastapi import APIRouter, FastAPI, HTTPException
 from fastapi.responses import JSONResponse
 
-from schemas import ExllamaCfg, UpdateLlm, SystemSchema, ChatModel
+from schemas import ExllamaCfg, UpdateLlm, SystemSchema, ChatModel, UpdateTtsModel
 
 app = FastAPI()
 
@@ -26,35 +27,42 @@ current_path = os.path.dirname(os.path.realpath(__file__))
 project_path = os.path.abspath(os.getcwd())
 
 def loadConfigs():
-    global memories, character, llm_loader_cfg, system_cfg
-    global MODEL_TYPE, MODEL_LOADER, LANGUAGE, SPEED, SPEAKER_ID
+    global memories, character, llm_settings, llm_loader_settings, tts_settings
+    global MODEL_TYPE, MODEL_LOADER, LANGUAGE, SPEED, SPEAKER_ID, VOICE, PITCH, RATE, VOLUME
 
-    with open(os.path.join(project_path, "configs/system_cfg.json"), "r") as f:
+    with open(os.path.join(project_path, "configs/llm_loader_settings.json"), "r") as f:
         f.seek(0)  # Move to the beginning of the file
-        system_cfg = json.loads(f.read())
-        print("system from fast", system_cfg)
+        llm_loader_settings = json.loads(f.read())
 
-    MODEL_TYPE = system_cfg['model_type']
-    MODEL_LOADER = system_cfg['model_loader']
-    LANGUAGE = system_cfg['language']
-    SPEED = system_cfg['speed']
-    SPEAKER_ID = system_cfg['speaker_id']
-    
-    
     with open(os.path.join(project_path, "configs/character.json"), "r") as f:
         f.seek(0)  # Move to the beginning of the file
         character = json.loads(f.read())
-        print("character", character)
 
     with open(os.path.join(project_path, "configs/memories.json"), "r") as f:
         f.seek(0)  # Move to the beginning of the file
         memories = json.loads(f.read())
-        print("memories", memories)
 
-    with open(os.path.join(project_path, "configs/llm_loader_cfg.json"), "r") as f:
+    with open(os.path.join(project_path, "configs/llm_settings.json"), "r") as f:
         f.seek(0)  # Move to the beginning of the file
-        llm_loader_cfg = json.loads(f.read())
-        print("llm_loader_cfg", llm_loader_cfg)
+        llm_settings = json.loads(f.read())
+
+    with open(os.path.join(project_path, "configs/tts_settings.json"), "r") as f:
+        f.seek(0)  # Move to the beginning of the file
+        tts_settings = json.loads(f.read())
+
+    MODEL_TYPE = llm_loader_settings['model_type']
+    MODEL_LOADER = llm_loader_settings['model_loader']
+
+    # MoeTTS Settings
+    LANGUAGE = tts_settings['language']
+    SPEED = tts_settings['speed']
+    SPEAKER_ID = tts_settings['speaker_id']
+
+    # edgeTTS Settings
+    VOICE = tts_settings['voice']
+    PITCH = tts_settings['pitch']
+    RATE = tts_settings['rate']
+    VOLUME = tts_settings['volume']
 
 def saveReply(question, bot_response):
     
@@ -72,23 +80,23 @@ def saveReply(question, bot_response):
     synthesize(text=LANGUAGE+replace_name_reply+LANGUAGE, speed=float(SPEED), out_path="reply.wav", speaker_id=int(SPEAKER_ID))
 
 llm_init = APIRouter(
-  prefix="/llm_init",
+  prefix="/init",
   tags=["Initialize LLM models and configs"],
   responses={404: {"description": "Not found"}},
 )
-@llm_init.get("/init_configs")
+@llm_init.get("/configs")
 def load_configs():
     # init configs
     loadConfigs()
     return {
-        "model_type": MODEL_TYPE,
-        "model_loader": MODEL_LOADER,
-        "language": LANGUAGE,
-        "speed": SPEED,
-        "speaker_id": SPEAKER_ID
+        "llm_settings": llm_settings,
+        "llm_loader_settings": llm_loader_settings,
+        "character": character,
+        "memories": memories,
+        "tts_settings": tts_settings
     }
 
-@llm_init.get("/init_model")
+@llm_init.get("/model")
 def init_models():
 
     global init_model, model, tokenizer
@@ -100,162 +108,202 @@ def init_models():
 
     if "/" not in MODEL_NAME_OR_PATH:
         MODEL_NAME_OR_PATH = os.path.abspath(os.path.join("models/LLM", MODEL_NAME_OR_PATH))
+        st_pattern = os.path.join(MODEL_NAME_OR_PATH, "*.safetensors")
+        try:
+            MODEL_BASENAME = glob.glob(st_pattern)[0] # find all files in the directory that match the * pattern
+        except:
+            MODEL_BASENAME=None
 
-    st_pattern = os.path.join(MODEL_NAME_OR_PATH, "*.safetensors")
-    try:
-        MODEL_BASENAME = glob.glob(st_pattern)[0] # find all files in the directory that match the * pattern
-    except:
-        MODEL_BASENAME=None
-
-
-    init_model = loadModelAndTokenizer(model_name_or_path=MODEL_NAME_OR_PATH, model_basename=MODEL_BASENAME)
-    # init_model = ""
-
-    model = init_model["model"]
-    tokenizer = init_model["tokenizer"]
-    return {
-        model: model,
-        tokenizer: tokenizer
-    }
+        init_model = loadModelAndTokenizer(model_name_or_path=MODEL_NAME_OR_PATH, model_basename=MODEL_BASENAME)
+        model = init_model["model"]
+        tokenizer = init_model["tokenizer"]
+        return {
+            "success": True,
+            "message": "Model loaded successfully",
+        }
+    else:
+        raise HTTPException(
+            status_code=404, 
+            detail="The models can only load inside the models/LLM folder, please remove any slashes '/' in MODEL_NAME_OR_PATH in .env"
+        )
 
 
 llm_router = APIRouter(
   prefix="/llm",
-  tags=["LLM"],
+  tags=["Chat with me (:>_<:)"],
   responses={404: {"description": "Not found"}},
 )
 @llm_router.post("/chat")
 def chat(ChatModel: ChatModel):
-    if MODEL_TYPE == "GPTQ":
-        if MODEL_LOADER == "AutoGPTQ":
-            model.seqlen = 4096
-            # Prevent printing spurious transformers error when using pipeline with AutoGPTQ
-            logging.set_verbosity(logging.CRITICAL)
+    try:
+        if MODEL_TYPE == "GPTQ":
+            if MODEL_LOADER == "AutoGPTQ":
+                model.seqlen = 4096
+                # Prevent printing spurious transformers error when using pipeline with AutoGPTQ
+                logging.set_verbosity(logging.CRITICAL)
 
-            pipeline = pipeline(
-                "text-generation",
-                model=model,
-                tokenizer=tokenizer,
-                max_length=int(llm_loader_cfg['max_length']),
-                max_new_tokens=int(llm_loader_cfg['max_new_tokens']),
-                temperature=float(llm_loader_cfg['temperature']),
-                top_p=float(llm_loader_cfg['top_p']),
-                typical_p=float(llm_loader_cfg['typical_p']),
-                repetition_penalty=float(llm_loader_cfg['repetition_penalty']),
-                penalty_alpha=float(llm_loader_cfg['penalty_alpha']),
-                do_sample=float(llm_loader_cfg['do_sample'])
-            )
-            llm = HuggingFacePipeline(pipeline=pipeline)
+                pipeline = pipeline(
+                    "text-generation",
+                    model=model,
+                    tokenizer=tokenizer,
+                    max_length=int(llm_settings['max_length']),
+                    max_new_tokens=int(llm_settings['max_new_tokens']),
+                    temperature=float(llm_settings['temperature']),
+                    top_p=float(llm_settings['top_p']),
+                    typical_p=float(llm_settings['typical_p']),
+                    repetition_penalty=float(llm_settings['repetition_penalty']),
+                    penalty_alpha=float(llm_settings['penalty_alpha']),
+                    do_sample=float(llm_settings['do_sample'])
+                )
+                llm = HuggingFacePipeline(pipeline=pipeline)
 
-            question = ChatModel.questions
-            
-            template = setTemplate() # set and execute the right template of the models
+                question = ChatModel.questions
+                
+                template = setTemplate() # set and execute the right template of the models
 
-            # prompt = PromptTemplate(template=template, input_variables=["question"]) # generate the prompt
-            prompt = PromptTemplate.from_template(template)
-            prompt.format(question=question)
+                # prompt = PromptTemplate(template=template, input_variables=["question"]) # generate the prompt
+                prompt = PromptTemplate.from_template(template)
+                prompt.format(question=question)
 
-            # using pipeline from Langchain
-            llm_chain = LLMChain(prompt=prompt, llm=llm) # create a chain
-            bot_reply = llm_chain.run(question) # run the chain
+                # using pipeline from Langchain
+                llm_chain = LLMChain(prompt=prompt, llm=llm) # create a chain
+                bot_reply = llm_chain.run(question) # run the chain
 
-            # saveReply(question, bot_reply)
-            replace_name_reply = str(bot_reply).replace('<USER>', memories['MC_name'])
+                # saveReply(question, bot_reply)
+                replace_name_reply = str(bot_reply).replace('<USER>', memories['MC_name'])
 
-            answer = f"{character['char_name']}:{replace_name_reply}"
+                print(f"{character['char_name']}:{replace_name_reply}")
 
-            # Insert the chat history
-            memories['history'].append(f"You: {question}")
-            memories['history'].append(f"{character['char_name']}:{replace_name_reply}")
+                # Insert the chat history
+                memories['history'].append(f"You: {question}")
+                memories['history'].append(f"{character['char_name']}:{replace_name_reply}")
 
-            # Save the chat history to a JSON file
-            with open(os.path.join(project_path, "configs/memories.json"), "w", encoding='utf-8') as outfile:
-                json.dump(memories, outfile, ensure_ascii=False, indent=2)
+                # Save the chat history to a JSON file
+                with open(os.path.join(project_path, "configs/memories.json"), "w", encoding='utf-8') as outfile:
+                    json.dump(memories, outfile, ensure_ascii=False, indent=2)
 
-            synthesize(text=LANGUAGE+replace_name_reply+LANGUAGE, speed=float(SPEED), out_path="reply.wav", speaker_id=int(SPEAKER_ID))
-            file_path = os.path.join(project_path, "reply.wav")
+                if tts_settings['tts_type'] == "MoeTTS":
+                    # MoeTTS
+                    synthesize(text=LANGUAGE+replace_name_reply+LANGUAGE, speed=float(SPEED), out_path="reply.wav", speaker_id=int(SPEAKER_ID))
 
-            try:
-                with open(file_path, "rb") as audio_file:
-                    audio_content = base64.b64encode(audio_file.read()).decode("utf-8")
+                elif tts_settings['tts_type'] == "EdgeTTS":
+                    # "voice": "en-US-AnaNeural",
+                    # "pitch": "+0Hz",
+                    # "rate":"+0%",
+                    # "volume": "+0%"
+                    # EdgeTTS
+                    run_tts(
+                        replace_name_reply,
+                        VOICE,
+                        RATE,
+                        VOLUME,
+                        PITCH,
+                        output_file="reply.wav"
+                    )
 
-                response_data = {
-                    "question": question,
-                    "reply_text": answer,
-                    "reply_audio": audio_content
-                }
-                return JSONResponse(content=response_data)
-            except FileNotFoundError:
-                raise HTTPException(status_code=404, detail="File not found")
-            
-        elif MODEL_LOADER == "ExLlama":
-            # create cache for inference
-            cache = ExLlamaCache(model)
-            generator = ExLlamaGenerator(model, tokenizer, cache)   # create generator
+                file_path = os.path.join(project_path, "reply.wav")
 
-            # Configure generator
-            # generator.disallow_tokens([tokenizer.eos_token_id])
-            generator.settings.token_repetition_penalty_max = float(llm_loader_cfg['token_repetition_penalty_max'])
-            generator.settings.temperature = float(llm_loader_cfg['temperature'])
-            generator.settings.top_p = float(llm_loader_cfg['top_p'])
-            generator.settings.top_k = int(llm_loader_cfg['top_k'])
-            generator.settings.typical = float(llm_loader_cfg['typical'])
-            generator.settings.beams = int(llm_loader_cfg['beams'])
-            generator.settings.beam_length = int(llm_loader_cfg['beam_length'])
-            generator.settings.token_repetition_penalty_sustain = int(llm_loader_cfg['token_repetition_penalty_sustain'])
-            generator.settings.token_repetition_penalty_decay = int(llm_loader_cfg['token_repetition_penalty_decay'])
+                try:
+                    with open(file_path, "rb") as audio_file:
+                        audio_content = base64.b64encode(audio_file.read()).decode("utf-8")
 
-            question = ChatModel.questions
-            template = setTemplate() # set and execute the right template of the models
-            prompt = template.format(question=question)
+                    response_data = {
+                        "question": question,
+                        "reply_text": replace_name_reply,
+                        "reply_audio": audio_content
+                    }
+                    return JSONResponse(content=response_data)
+                except FileNotFoundError:
+                    raise HTTPException(status_code=404, detail="File not found")
+                
+            elif MODEL_LOADER == "ExLlama":
+                # create cache for inference
+                cache = ExLlamaCache(model)
+                generator = ExLlamaGenerator(model, tokenizer, cache)   # create generator
 
-            output = generator.generate_simple(prompt, max_new_tokens=int(llm_loader_cfg['max_new_tokens']))
+                # Configure generator
+                # generator.disallow_tokens([tokenizer.eos_token_id])
+                generator.settings.token_repetition_penalty_max = float(llm_settings['token_repetition_penalty_max'])
+                generator.settings.temperature = float(llm_settings['temperature'])
+                generator.settings.top_p = float(llm_settings['top_p'])
+                generator.settings.top_k = int(llm_settings['top_k'])
+                generator.settings.typical = float(llm_settings['typical'])
+                generator.settings.beams = int(llm_settings['beams'])
+                generator.settings.beam_length = int(llm_settings['beam_length'])
+                generator.settings.token_repetition_penalty_sustain = int(llm_settings['token_repetition_penalty_sustain'])
+                generator.settings.token_repetition_penalty_decay = int(llm_settings['token_repetition_penalty_decay'])
 
-            replace_name_reply = str(output[len(prompt):]).replace('<USER>', memories['MC_name'])
+                question = ChatModel.questions
+                template = setTemplate() # set and execute the right template of the models
+                prompt = template.format(question=question)
 
-            answer = f"{character['char_name']}:{replace_name_reply}"
+                print("max_new_tokens:", llm_settings['max_new_tokens'])
 
-            # Insert the chat history
-            memories['history'].append(f"You: {question}")
-            memories['history'].append(f"{character['char_name']}:{replace_name_reply}")
+                output = generator.generate_simple(prompt, max_new_tokens=int(llm_settings['max_new_tokens']))
 
-            # Save the chat history to a JSON file
-            with open(os.path.join(project_path, "configs/memories.json"), "w", encoding='utf-8') as outfile:
-                json.dump(memories, outfile, ensure_ascii=False, indent=2)
+                replace_name_reply = str(output[len(prompt):]).replace('<USER>', memories['MC_name'])
 
-            synthesize(text=LANGUAGE+replace_name_reply+LANGUAGE, speed=float(SPEED), out_path="reply.wav", speaker_id=int(SPEAKER_ID))
-            file_path = os.path.join(project_path, "reply.wav")
+                print(f"{character['char_name']}:{replace_name_reply}")
 
-            try:
-                with open(file_path, "rb") as audio_file:
-                    audio_content = base64.b64encode(audio_file.read()).decode("utf-8")
+                # Insert the chat history
+                memories['history'].append(f"You: {question}")
+                memories['history'].append(f"{character['char_name']}:{replace_name_reply}")
 
-                response_data = {
-                    "question": question,
-                    "reply_text": answer,
-                    "reply_audio": audio_content
-                }
+                # Save the chat history to a JSON file
+                with open(os.path.join(project_path, "configs/memories.json"), "w", encoding='utf-8') as outfile:
+                    json.dump(memories, outfile, ensure_ascii=False, indent=2)
 
-                return JSONResponse(content=response_data)
-            except FileNotFoundError:
-                raise HTTPException(status_code=404, detail="File not found")
-    else:
-        raise HTTPException(status_code=404, detail=f"Model Type Not Found: {MODEL_TYPE}")
+                if tts_settings['tts_type'] == "MoeTTS":
+                    # MoeTTS
+                    synthesize(text=LANGUAGE+replace_name_reply+LANGUAGE, speed=float(SPEED), out_path="reply.wav", speaker_id=int(SPEAKER_ID))
 
+                elif tts_settings['tts_type'] == "EdgeTTS":
+                    # "voice": "en-US-AnaNeural",
+                    # "pitch": "+0Hz",
+                    # "rate":"+0%",
+                    # "volume": "+0%"
+                    # EdgeTTS
+                    run_tts(
+                        replace_name_reply,
+                        VOICE,
+                        RATE,
+                        VOLUME,
+                        PITCH,
+                        output_file="reply.wav"
+                    )
+
+                file_path = os.path.join(project_path, "reply.wav")
+
+                try:
+                    with open(file_path, "rb") as audio_file:
+                        audio_content = base64.b64encode(audio_file.read()).decode("utf-8")
+
+                    response_data = {
+                        "question": question,
+                        "reply_text": replace_name_reply,
+                        "reply_audio": audio_content
+                    }
+
+                    return JSONResponse(content=response_data)
+                except FileNotFoundError:
+                    raise HTTPException(status_code=404, detail="File not found")
+        else:
+            raise HTTPException(status_code=404, detail=f"Model Type Not Found: {MODEL_TYPE}")
+    except Exception as e:
+        raise HTTPException(status_code=404, detail=f"{str(e)}, Please Initialize before chatting")
 
 setings_router = APIRouter(
   prefix="/settings",
   tags=["Settings and Configurations"],
   responses={404: {"description": "Not found"}},
 )
-@setings_router.get("/llm_loader")
-def llm_loader():
-    return llm_loader_cfg
+@setings_router.get("/llm_settings")
+def get_llm_settings():
+    return llm_settings
 
-
-@setings_router.put("/llm_loader", response_model=UpdateLlm)
-def llm_loader(llm: UpdateLlm):
-    with open(os.path.join(project_path, "configs/llm_loader_cfg.json"), "w", encoding='utf-8') as outfile:
+@setings_router.put("/llm_settings", response_model=UpdateLlm)
+def update_llm_settings(llm: UpdateLlm):
+    with open(os.path.join(project_path, "configs/llm_settings.json"), "w", encoding='utf-8') as outfile:
         json.dump(json.loads(llm.json()), outfile, ensure_ascii=False, indent=2)
 
     # reload configs
@@ -263,12 +311,12 @@ def llm_loader(llm: UpdateLlm):
 
     return llm
 
-@setings_router.get("/system")
-def system_settings():
-    return system_cfg
+@setings_router.get("/llm_loader_settings")
+def llm_loader_settings():
+    return llm_loader_settings
 
-@setings_router.put("/system", response_model=SystemSchema)
-def system_settings(system: SystemSchema):
+@setings_router.put("/llm_loader_settings", response_model=SystemSchema)
+def llm_loader_settings(system: SystemSchema):
     """
     template_type: # for now is 'pygmalion' and 'prompt'
     model_type: # GPTQ
@@ -278,7 +326,7 @@ def system_settings(system: SystemSchema):
     speaker_id: int # 607
     """
     
-    with open(os.path.join(project_path, "configs/system_cfg.json"), "w", encoding='utf-8') as outfile:
+    with open(os.path.join(project_path, "configs/llm_loader_settings.json"), "w", encoding='utf-8') as outfile:
         json.dump(json.loads(system.json()), outfile, ensure_ascii=False, indent=2)
 
     # reload configs
@@ -286,6 +334,19 @@ def system_settings(system: SystemSchema):
 
     return system
 
+@setings_router.get("/tts_settings")
+def get_tts_settings():
+    return tts_settings
+
+@setings_router.put("/tts_settings", response_model=UpdateTtsModel)
+def update_tts_settings(tts: UpdateTtsModel):
+    with open(os.path.join(project_path, "configs/tts_settings.json"), "w", encoding='utf-8') as outfile:
+        json.dump(json.loads(tts.json()), outfile, ensure_ascii=False, indent=2)
+
+    # reload configs
+    loadConfigs()
+
+    return tts
 
 
 
