@@ -7,3 +7,5 @@ models/TTS/vits/*
 offload/
 *.wav
 memories.json
+system_cfg.json
+llm_loader_cfg.json
