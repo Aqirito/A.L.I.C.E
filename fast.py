@@ -148,25 +148,6 @@ llm_router = APIRouter(
   responses={404: {"description": "Not found"}},
 )
 
-@llm_router.post("/upload")
-def upload_character(file: UploadFile):
-    if file.content_type != 'application/json':
-        raise HTTPException(status_code=400, detail="Only JSON files are allowed")
-    
-    key_check = ["char_name", "char_persona", "example_dialogue", "world_scenario"]
-    file_json = json.loads(file.file.read().decode("utf-8"))
-    
-    # Check if all keys are present
-    if all(key in file_json for key in key_check):
-        with open(os.path.join(project_path, "configs/character.json"), "w", encoding='utf-8') as outfile:
-            json.dump(file_json, outfile, ensure_ascii=False, indent=2)
-        loadConfigs()
-        return FileResponse("configs/character.json", filename="character.json", media_type="application/json")
-    else:
-        raise HTTPException(status_code=400, detail="Invalid JSON file")
-
-
-
 @llm_router.post("/chat")
 def chat(ChatModel: ChatModel):
     try:
@@ -325,7 +306,31 @@ def chat(ChatModel: ChatModel):
             raise HTTPException(status_code=404, detail=f"Model Type Not Found: {MODEL_TYPE}")
     except Exception as e:
         raise HTTPException(status_code=404, detail=f"{str(e)}, Please Initialize config before chatting")
+
+@llm_router.get("/character")
+def get_character():
+    try:
+        return character
+    except Exception as e:
+        raise HTTPException(status_code=404, detail=f"{str(e)}, please Initialize the config first")
+
+@llm_router.post("/upload")
+def upload_character(file: UploadFile):
+    if file.content_type != 'application/json':
+        raise HTTPException(status_code=400, detail="Only JSON files are allowed")
     
+    key_check = ["char_name", "char_persona", "example_dialogue", "world_scenario"]
+    file_json = json.loads(file.file.read().decode("utf-8"))
+    
+    # Check if all keys are present
+    if all(key in file_json for key in key_check):
+        with open(os.path.join(project_path, "configs/character.json"), "w", encoding='utf-8') as outfile:
+            json.dump(file_json, outfile, ensure_ascii=False, indent=2)
+        loadConfigs()
+        return FileResponse("configs/character.json", filename="character.json", media_type="application/json")
+    else:
+        raise HTTPException(status_code=400, detail="Invalid JSON file")
+
 @llm_router.get("/memories")
 def get_memories():
     try:
