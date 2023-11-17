@@ -156,6 +156,7 @@ def upload_character(file: UploadFile):
     key_check = ["char_name", "char_persona", "example_dialogue", "world_scenario"]
     file_json = json.loads(file.file.read().decode("utf-8"))
     
+    # Check if all keys are present
     if all(key in file_json for key in key_check):
         with open(os.path.join(project_path, "configs/character.json"), "w", encoding='utf-8') as outfile:
             json.dump(file_json, outfile, ensure_ascii=False, indent=2)
