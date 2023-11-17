@@ -16,12 +16,23 @@ import glob
 
 
 from typing import Union
-from fastapi import APIRouter, FastAPI, HTTPException
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, FastAPI, HTTPException, UploadFile, File
+from fastapi.responses import JSONResponse, FileResponse, StreamingResponse
+from fastapi.middleware.cors import CORSMiddleware
 
 from schemas import ExllamaCfg, UpdateLlm, SystemSchema, ChatModel, UpdateTtsModel
 
 app = FastAPI()
+
+origins = ["*"]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 current_path = os.path.dirname(os.path.realpath(__file__))
 project_path = os.path.abspath(os.getcwd())
@@ -136,6 +147,25 @@ llm_router = APIRouter(
   tags=["Chat with me (:>_<:)"],
   responses={404: {"description": "Not found"}},
 )
+
+@llm_router.post("/upload")
+def upload_character(file: UploadFile):
+    if file.content_type != 'application/json':
+        raise HTTPException(status_code=400, detail="Only JSON files are allowed")
+    
+    key_check = ["char_name", "char_persona", "example_dialogue", "world_scenario"]
+    file_json = json.loads(file.file.read().decode("utf-8"))
+    
+    if all(key in file_json for key in key_check):
+        with open(os.path.join(project_path, "configs/character.json"), "w", encoding='utf-8') as outfile:
+            json.dump(file_json, outfile, ensure_ascii=False, indent=2)
+        loadConfigs()
+        return FileResponse("configs/character.json", filename="character.json", media_type="application/json")
+    else:
+        raise HTTPException(status_code=400, detail="Invalid JSON file")
+
+
+
 @llm_router.post("/chat")
 def chat(ChatModel: ChatModel):
     try:
