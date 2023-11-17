@@ -27,7 +27,7 @@ current_path = os.path.dirname(os.path.realpath(__file__))
 project_path = os.path.abspath(os.getcwd())
 
 def loadConfigs():
-    global memories, character, llm_settings, llm_loader_settings, tts_settings
+    global memories, character, llm_settings, llm_loader_settings, tts_settings, memories
     global MODEL_TYPE, MODEL_LOADER, LANGUAGE, SPEED, SPEAKER_ID, VOICE, PITCH, RATE, VOLUME
 
     with open(os.path.join(project_path, "configs/llm_loader_settings.json"), "r") as f:
@@ -79,6 +79,8 @@ def saveReply(question, bot_response):
 
     synthesize(text=LANGUAGE+replace_name_reply+LANGUAGE, speed=float(SPEED), out_path="reply.wav", speaker_id=int(SPEAKER_ID))
 
+
+##### LLM INIT #####
 llm_init = APIRouter(
   prefix="/init",
   tags=["Initialize LLM models and configs"],
@@ -128,6 +130,7 @@ def init_models():
         )
 
 
+##### LLM ROUTER #####
 llm_router = APIRouter(
   prefix="/llm",
   tags=["Chat with me (:>_<:)"],
@@ -290,8 +293,28 @@ def chat(ChatModel: ChatModel):
         else:
             raise HTTPException(status_code=404, detail=f"Model Type Not Found: {MODEL_TYPE}")
     except Exception as e:
-        raise HTTPException(status_code=404, detail=f"{str(e)}, Please Initialize before chatting")
+        raise HTTPException(status_code=404, detail=f"{str(e)}, Please Initialize config before chatting")
+    
+@llm_router.get("/memories")
+def get_memories():
+    try:
+        return memories
+    except Exception as e:
+        raise HTTPException(status_code=404, detail=f"{str(e)}, please Initialize the config first")
 
+@llm_router.delete("/memories")
+def delete_memories():
+    try:
+        memories['history'] = []
+        with open(os.path.join(project_path, "configs/memories.json"), "w", encoding='utf-8') as outfile:
+            json.dump(memories, outfile, ensure_ascii=False, indent=2)
+
+        return memories
+    except Exception as e:
+        raise HTTPException(status_code=404, detail=f"{str(e)}, please Initialize the config first")
+
+
+##### SETTINGS ROUTER #####
 setings_router = APIRouter(
   prefix="/settings",
   tags=["Settings and Configurations"],
@@ -299,21 +322,29 @@ setings_router = APIRouter(
 )
 @setings_router.get("/llm_settings")
 def get_llm_settings():
-    return llm_settings
+    try:
+        return llm_settings
+    except Exception as e:
+        raise HTTPException(status_code=404, detail=f"{str(e)}, please Initialize the config first")
 
 @setings_router.put("/llm_settings", response_model=UpdateLlm)
 def update_llm_settings(llm: UpdateLlm):
-    with open(os.path.join(project_path, "configs/llm_settings.json"), "w", encoding='utf-8') as outfile:
-        json.dump(json.loads(llm.json()), outfile, ensure_ascii=False, indent=2)
+    try:
+        with open(os.path.join(project_path, "configs/llm_settings.json"), "w", encoding='utf-8') as outfile:
+            json.dump(json.loads(llm.json()), outfile, ensure_ascii=False, indent=2)
 
-    # reload configs
-    loadConfigs()
-
-    return llm
+        # reload configs
+        loadConfigs()
+        return llm
+    except Exception as e:
+        raise HTTPException(status_code=404, detail=f"{str(e)}, please Initialize the config first")
 
 @setings_router.get("/llm_loader_settings")
 def llm_loader_settings():
-    return llm_loader_settings
+    try:
+        return llm_loader_settings
+    except Exception as e:
+        raise HTTPException(status_code=404, detail=f"{str(e)}, please Initialize the config first")
 
 @setings_router.put("/llm_loader_settings", response_model=SystemSchema)
 def llm_loader_settings(system: SystemSchema):
@@ -325,29 +356,37 @@ def llm_loader_settings(system: SystemSchema):
     speed: float # good results is 0.77
     speaker_id: int # 607
     """
-    
-    with open(os.path.join(project_path, "configs/llm_loader_settings.json"), "w", encoding='utf-8') as outfile:
-        json.dump(json.loads(system.json()), outfile, ensure_ascii=False, indent=2)
+    try:
+        with open(os.path.join(project_path, "configs/llm_loader_settings.json"), "w", encoding='utf-8') as outfile:
+            json.dump(json.loads(system.json()), outfile, ensure_ascii=False, indent=2)
 
-    # reload configs
-    loadConfigs()
+        # reload configs
+        loadConfigs()
 
-    return system
+        return system
+    except Exception as e:
+        raise HTTPException(status_code=404, detail=f"{str(e)}, please Initialize the config first")
 
 @setings_router.get("/tts_settings")
 def get_tts_settings():
-    return tts_settings
+    try:
+        return tts_settings
+    except Exception as e:
+        raise HTTPException(status_code=404, detail=f"{str(e)}, please Initialize the config first")
 
 @setings_router.put("/tts_settings", response_model=UpdateTtsModel)
 def update_tts_settings(tts: UpdateTtsModel):
-    with open(os.path.join(project_path, "configs/tts_settings.json"), "w", encoding='utf-8') as outfile:
-        json.dump(json.loads(tts.json()), outfile, ensure_ascii=False, indent=2)
+    
+    try:
+        with open(os.path.join(project_path, "configs/tts_settings.json"), "w", encoding='utf-8') as outfile:
+            json.dump(json.loads(tts.json()), outfile, ensure_ascii=False, indent=2)
 
-    # reload configs
-    loadConfigs()
+        # reload configs
+        loadConfigs()
 
-    return tts
-
+        return tts
+    except Exception as e:
+        raise HTTPException(status_code=404, detail=f"{str(e)}, please Initialize the config first")
 
 
 app.include_router(llm_init)
