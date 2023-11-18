@@ -1,7 +1,9 @@
 
-# LangPlusWaifu REST API
+# A.L.I.C.E PROJECT
 
-A REST API of an AI chatbot
+A.L.I.C.E (Artificial Labile Intelligence Cybernated Existence)
+
+Is a REST API of an A.I companions.
 
 *Tested in Windows with Pytorch 2.0.0 with CUDA 11.7*
 *Python 3.10*
