@@ -388,9 +388,6 @@ def llm_loader_settings(system: SystemSchema):
     template_type: # for now is 'pygmalion' and 'prompt'
     model_type: # GPTQ
     model_loader: # AutoGPTQ, HuggingFaceBig, ExLlama
-    language: # [EN], [JA], [ZH], [KO]
-    speed: float # good results is 0.77
-    speaker_id: int # 607
     """
     try:
         with open(os.path.join(project_path, "configs/llm_loader_settings.json"), "w", encoding='utf-8') as outfile:
