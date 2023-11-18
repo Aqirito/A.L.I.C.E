@@ -7,7 +7,8 @@ import cn2an
 import logging
 
 logging.getLogger('jieba').setLevel(logging.WARNING)
-jieba.set_dictionary(os.path.dirname(sys.argv[0])+'/moe/jieba/dict.txt')
+project_path = os.path.abspath(os.getcwd())
+jieba.set_dictionary(os.path.join(project_path, 'moe/jieba/dict.txt'))
 jieba.initialize()
 
 

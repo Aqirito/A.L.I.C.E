@@ -1,0 +1,10 @@
+{
+  "tts_type": "EdgeTTS",
+  "language": "[EN]",
+  "speed": 0.7,
+  "speaker_id": 607,
+  "voice": "en-US-AnaNeural",
+  "pitch": "+0Hz",
+  "rate": "+0%",
+  "volume": "+0%"
+}

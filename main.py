@@ -31,16 +31,17 @@ except:
     MODEL_BASENAME=None
 
 current_path = os.path.dirname(os.path.realpath(__file__))
+project_path = os.path.abspath(os.getcwd())
 init_model = loadModelAndTokenizer(model_name_or_path=MODEL_NAME_OR_PATH, model_basename=MODEL_BASENAME)
 
 model = init_model["model"]
 tokenizer = init_model["tokenizer"]
 
-with open(os.path.join(current_path, "character.json"), "r") as f:
+with open(os.path.join(project_path, "configs/character.json"), "r") as f:
     f.seek(0)  # Move to the beginning of the file
     character = json.loads(f.read())
 
-with open(os.path.join(current_path, "memories.json"), "r") as f:
+with open(os.path.join(project_path, "configs/memories.json"), "r") as f:
     f.seek(0)  # Move to the beginning of the file
     memories = json.loads(f.read())
 

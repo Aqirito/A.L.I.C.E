@@ -1,16 +1,19 @@
-import logging
-from langchain import HuggingFacePipeline, PromptTemplate
-from transformers import AutoTokenizer, AutoModelForCausalLM, AutoConfig
-from accelerate import infer_auto_device_map, init_empty_weights
+import json
+from transformers import AutoTokenizer, AutoModelForCausalLM
 from auto_gptq import AutoGPTQForCausalLM
-import torch
-from dotenv import dotenv_values
 import os
 import glob
 
-# load ENV
-env = dotenv_values(".env")
-MODEL_LOADER = env['MODEL_LOADER']
+global llm_loader_settings
+
+current_path = os.path.dirname(os.path.realpath(__file__))
+project_path = os.path.abspath(os.getcwd())
+
+with open(os.path.join(project_path, "configs/llm_loader_settings.json"), "r") as f:
+    f.seek(0)  # Move to the beginning of the file
+    llm_loader_settings = json.loads(f.read())
+
+MODEL_LOADER = llm_loader_settings['model_loader']
 
 def loadModelAndTokenizer(model_name_or_path, model_basename):
     if MODEL_LOADER == "AutoGPTQ":
@@ -67,9 +70,8 @@ def AutoGPTQLoader(model_name_or_path, model_basename):
 
 def ExLlamaLoader(model_name_or_path):
     # from init_models import loadModelAndTokenizer
-    from exllama.model import ExLlama, ExLlamaCache, ExLlamaConfig
+    from exllama.model import ExLlama, ExLlamaConfig
     from exllama.tokenizer import ExLlamaTokenizer
-    from exllama.generator import ExLlamaGenerator
 
     tokenizer_path = os.path.join(model_name_or_path, "tokenizer.model")
     model_config_path = os.path.join(model_name_or_path, "config.json")

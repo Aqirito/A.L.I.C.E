@@ -1,0 +1,5 @@
+{
+  "template_type": "pygmalion", 
+  "model_type": "GPTQ",
+  "model_loader": "ExLlama"
+}
