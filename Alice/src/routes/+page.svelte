@@ -1,83 +1,128 @@
 <script lang="ts">
 	import type { PageData } from './$types';
+	import { Live2DModel, MotionPriority, SoundManager, config } from 'pixi-live2d-display-lipsyncpatch';
 	import * as PIXI from 'pixi.js';
-	import { Live2DModel, MotionPriority, SoundManager, config } from 'pixi-live2d-display';
-
 	import { onMount } from 'svelte';
+
+	// expose PIXI to window so that this plugin can reference window.PIXI.Ticker
+	window.PIXI = PIXI;
 
 	export let data: PageData;
 
-  let container: any = null;
-  // expose PIXI to window so that this plugin is able to
-  // reference window.PIXI.Ticker to automatically update Live2D models
-  window.PIXI = PIXI;
-  let audio: any;
+	let container: any;
+	let live2DModel: any;
+	let recorder: MediaRecorder | null = null;
+	let audioChunks: Blob[] = [];
 
-  SoundManager.volume = 0.2;
-  // SoundManager.add('Resources/Haru/sound/006.wav');
-  // log level
-  config.logLevel = config.LOG_LEVEL_ERROR; // LOG_LEVEL_VERBOSE, LOG_LEVEL_ERROR, LOG_LEVEL_NONE
+	SoundManager.volume = 0.9;
+	config.logLevel = config.LOG_LEVEL_ERROR;
+	config.sound = true;
+	config.motionSync = true;
 
-  // play sound for motions
-  config.sound = true;
+	const cubism4Model = "https://cdn.jsdelivr.net/gh/guansss/pixi-live2d-display@0.4.0/test/assets/shizuku/shizuku.model.json";
 
-  // defer the playback of a motion and its sound until both are loaded
-  config.motionSync = true;
-
-  config.cubism4.supportMoreMaskDivisions = true;
-
-  const cubism4Model =
-  "https://cdn.jsdelivr.net/gh/guansss/pixi-live2d-display/test/assets/haru/haru_greeter_t03.model3.json";
-
-  onMount(() => {
-    loadModel();
-  });
+	onMount(() => {
+		loadModel();
+	});
 
 	async function loadModel() {
 		let app = new PIXI.Application({
-			view: document.getElementById('canvas') as HTMLCanvasElement,
-      autoStart: true,
-      resizeTo: container,
-      backgroundColor: 0x333333,
-      width: container.clientWidth,
-      forceCanvas: true
+			view: document.getElementById('modelViewer') as HTMLCanvasElement,
+			autoStart: true,
+			backgroundColor: 0x333333,
+			width: container.clientWidth
 		});
 
-		let model: Live2DModel = await Live2DModel.from('Resources/Mao/Mao.model3.json', {idleMotionGroup: 'Idle', autoInteract: false});
-		// let model: any = await Live2DModel.from(cubism4Model);
+		live2DModel = await Live2DModel.from(cubism4Model);
+		app.stage.addChild(live2DModel);
 
-    model.on('hit', (hitAreaNames: string) => {
-      if (hitAreaNames.includes('Body')) {
-        // body is hit
-        model.motion('TapBody', undefined, MotionPriority.FORCE)
-        // model.motion('TapBody')
-        model.expression()
-        
-        SoundManager.play(audio);
-      }
-    });
-    model.on('hit', (hitAreaNames: string) => {
-      if (hitAreaNames.includes('Head')) {
-        model.expression()
-      }
-    });
-    app.stage.addChild(model);
+		live2DModel.scale.set(0.3);
+		let centerX = live2DModel.width / 2;
+		let container_centerX = container.clientWidth / 2;
+		live2DModel.x = live2DModel.x - centerX + container_centerX;
 
-		model.scale.set(0.1);
-    let centerX = model.width / 2;
-    // console.log("centerX",centerX)
-    let container_centerX = container.clientWidth / 2;
-    // console.log("container_centerX",container_centerX)
-    model.x = (model.x - centerX) + container_centerX
-    // console.log("model.x",model.x)
+		live2DModel.on('hit', (hitAreaNames: string) => {
+			if (hitAreaNames.includes('body')) {
+        console.log('hit body');
+        var category_name = "idle" // name of the morion category
+        var animation_index = 0 // index of animation under that motion category [null => random]
+        var priority_number = 3 // if you want to keep the current animation going or move to new animation by force [0: no priority, 1: idle, 2: normal, 3: forced]
+        var audio_link = "https://cdn.jsdelivr.net/gh/RaSan147/pixi-live2d-display@v1.0.3/playground/test.mp3" //[Optional arg, can be null or empty] [relative or full url path] [mp3 or wav file]
+        var volume = 1.0; //[Optional arg, can be null or empty] [0.0 - 1.0]
+        var expression = 2; //[Optional arg, can be null or empty] [index|name of expression]
+        var resetExpression = true; //[Optional arg, can be null or empty] [true|false] [default: true] [if true, expression will be reset to default after animation is over]
+
+        live2DModel.motion(category_name, animation_index, priority_number, {
+          sound: audio_link, 
+          volume: volume, 
+          expression:expression, 
+          resetExpression:resetExpression, 
+          crossOrigin : "anonymous"
+        })
+
+				// live2DModel.expression();
+			}
+		});
+
+		live2DModel.on('hit', (hitAreaNames: string) => {
+			if (hitAreaNames.includes('body')) {
+				live2DModel.expression();
+			}
+		});
+	}
+
+	// Microphone integration using live2DModel.speak()
+	async function startMicrophone() {
+		try {
+			const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+			console.log('Microphone access granted');
+			startRecording(stream);
+		} catch (error) {
+			console.error('Microphone access denied:', error);
+		}
+	}
+
+	function startRecording(stream: MediaStream) {
+		recorder = new MediaRecorder(stream);
+		audioChunks = [];
+
+		recorder.ondataavailable = (event) => {
+			audioChunks.push(event.data);
+		};
+
+		recorder.onstop = async () => {
+			const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+			const base64Audio = await convertBlobToBase64(audioBlob);
+      console.log(base64Audio);
+
+			// Pass the Base64 string to live2DModel.speak()
+			if (live2DModel) {
+				await live2DModel.speak(base64Audio, {
+					volume: 1.0
+				});
+			}
+		};
+
+		recorder.start();
+
+		// Automatically stop recording after 5 seconds
+		setTimeout(() => {
+			recorder?.stop();
+		}, 5000); // Stop after 5 seconds
+	}
+
+	// Convert Blob to Base64 string
+	function convertBlobToBase64(blob: Blob): Promise<string> {
+		return new Promise((resolve, reject) => {
+			const reader = new FileReader();
+			reader.onloadend = () => resolve(reader.result as string);
+			reader.onerror = reject;
+			reader.readAsDataURL(blob);
+		});
 	}
 </script>
 
-
 <main bind:this={container} class="container">
-  <audio bind:this={audio} controls>
-    <source src="006.wav" type="audio/wav">
-    Your browser does not support the audio element.
-  </audio>
-  <canvas id="canvas" style="width: inherit; display: flex; justfy-content: center"></canvas>
+	<button on:click="{startMicrophone}">Start Microphone</button>
+	<canvas id="modelViewer" style="width: inherit; display: flex; justify-content: center;"></canvas>
 </main>
