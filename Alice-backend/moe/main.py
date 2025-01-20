@@ -12,9 +12,9 @@ from . text import text_to_sequence
 current_path = os.path.abspath(os.getcwd())
 project_path =os.path.dirname(os.getcwd())
 
-model_info = os.path.join(current_path + "\models\TTS", "info.json")
-model = os.path.join(current_path + "\models\TTS", "vits\model.pth")
-model_config = os.path.join(current_path + "\models\TTS", "vits\config.json")
+model_info = os.path.join(current_path + "/models/TTS", "info.json")
+model = os.path.join(current_path + "/models/TTS", "vits/model.pth")
+model_config = os.path.join(current_path + "/models/TTS", "vits/config.json")
 current_path = os.path.dirname(os.path.realpath(__file__))
 
 # with open(os.path.join(current_path, "speakers.json"), "r", encoding='utf-8') as f:
