@@ -1,7 +1,7 @@
 import base64
 from langchain import PromptTemplate, LLMChain
 from langchain import HuggingFacePipeline
-from transformers import logging
+from transformers import logging, pipeline
 from dotenv import dotenv_values
 from utils.init_models import loadModelAndTokenizer
 import json
@@ -24,11 +24,9 @@ from schemas import ExllamaCfg, UpdateLlm, SystemSchema, ChatModel, UpdateTtsMod
 
 app = FastAPI()
 
-origins = ["*"]
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -39,7 +37,7 @@ project_path = os.path.abspath(os.getcwd())
 
 def loadConfigs():
     global memories, character, llm_settings, llm_loader_settings, tts_settings, memories
-    global MODEL_TYPE, MODEL_LOADER, LANGUAGE, SPEED, SPEAKER_ID, VOICE, PITCH, RATE, VOLUME
+    global MODEL_LOADER, LANGUAGE, SPEED, SPEAKER_ID, VOICE, PITCH, RATE, VOLUME
 
     with open(os.path.join(project_path, "configs/llm_loader_settings.json"), "r") as f:
         f.seek(0)  # Move to the beginning of the file
@@ -60,8 +58,7 @@ def loadConfigs():
     with open(os.path.join(project_path, "configs/tts_settings.json"), "r") as f:
         f.seek(0)  # Move to the beginning of the file
         tts_settings = json.loads(f.read())
-
-    MODEL_TYPE = llm_loader_settings['model_type']
+    
     MODEL_LOADER = llm_loader_settings['model_loader']
 
     # MoeTTS Settings
@@ -99,6 +96,7 @@ llm_init = APIRouter(
 )
 @llm_init.get("/configs")
 def load_configs():
+    global memories, character, llm_settings, llm_loader_settings, tts_settings, memories
     # init configs
     loadConfigs()
     return {
@@ -111,7 +109,6 @@ def load_configs():
 
 @llm_init.get("/model")
 def init_models():
-
     global init_model, model, tokenizer
     global MODEL_NAME_OR_PATH
 
@@ -150,160 +147,155 @@ llm_router = APIRouter(
 
 @llm_router.post("/chat")
 def chat(ChatModel: ChatModel):
+    global pipeline
     try:
-        if MODEL_TYPE == "GPTQ":
-            if MODEL_LOADER == "AutoGPTQ":
-                model.seqlen = 4096
-                # Prevent printing spurious transformers error when using pipeline with AutoGPTQ
-                logging.set_verbosity(logging.CRITICAL)
+        if MODEL_LOADER == "AutoGPTQ" or MODEL_LOADER == "HuggingFaceBig":
+            model.seqlen = 4096
+            # Prevent printing spurious transformers error when using pipeline with AutoGPTQ
+            logging.set_verbosity(logging.CRITICAL)
 
-                pipeline = pipeline(
-                    "text-generation",
-                    model=model,
-                    tokenizer=tokenizer,
-                    max_length=int(llm_settings['max_length']),
-                    max_new_tokens=int(llm_settings['max_new_tokens']),
-                    temperature=float(llm_settings['temperature']),
-                    top_p=float(llm_settings['top_p']),
-                    typical_p=float(llm_settings['typical_p']),
-                    repetition_penalty=float(llm_settings['repetition_penalty']),
-                    penalty_alpha=float(llm_settings['penalty_alpha']),
-                    do_sample=float(llm_settings['do_sample'])
+            pipeline = pipeline(
+                "text-generation",
+                model=model,
+                tokenizer=tokenizer,
+                max_length=int(llm_settings['max_length']),
+                max_new_tokens=int(llm_settings['max_new_tokens']),
+                temperature=float(llm_settings['temperature']),
+                # top_p=float(llm_settings['top_p']),
+                # typical_p=float(llm_settings['typical_p']),
+                repetition_penalty=float(llm_settings['repetition_penalty']),
+                # penalty_alpha=float(llm_settings['penalty_alpha']),
+                do_sample=float(llm_settings['do_sample'])
+            )
+            llm = HuggingFacePipeline(pipeline=pipeline)
+
+            question = ChatModel.questions
+            
+            template = setTemplate() # set and execute the right template of the models
+
+            # prompt = PromptTemplate(template=template, input_variables=["question"]) # generate the prompt
+            prompt = PromptTemplate.from_template(template)
+            prompt.format(question=question)
+
+            # using pipeline from Langchain
+            llm_chain = LLMChain(prompt=prompt, llm=llm) # create a chain
+            bot_reply = llm_chain.run(question) # run the chain
+
+            # saveReply(question, bot_reply)
+            replace_name_reply = str(bot_reply).replace('<USER>', memories['MC_name'])
+
+            print(f"{character['char_name']}:{replace_name_reply}")
+
+            # Insert the chat history
+            memories['history'].append(f"You: {question}")
+            memories['history'].append(f"{character['char_name']}:{replace_name_reply}")
+
+            # Save the chat history to a JSON file
+            with open(os.path.join(project_path, "configs/memories.json"), "w", encoding='utf-8') as outfile:
+                json.dump(memories, outfile, ensure_ascii=False, indent=2)
+
+            if tts_settings['tts_type'] == "MoeTTS":
+                # MoeTTS
+                synthesize(text=LANGUAGE+replace_name_reply+LANGUAGE, speed=float(SPEED), out_path="reply.wav", speaker_id=int(SPEAKER_ID))
+
+            elif tts_settings['tts_type'] == "EdgeTTS":
+                run_tts(
+                    replace_name_reply,
+                    VOICE,
+                    RATE,
+                    VOLUME,
+                    PITCH,
+                    output_file="reply.wav"
                 )
-                llm = HuggingFacePipeline(pipeline=pipeline)
 
-                question = ChatModel.questions
-                
-                template = setTemplate() # set and execute the right template of the models
+            file_path = os.path.join(project_path, "reply.wav")
 
-                # prompt = PromptTemplate(template=template, input_variables=["question"]) # generate the prompt
-                prompt = PromptTemplate.from_template(template)
-                prompt.format(question=question)
+            try:
+                with open(file_path, "rb") as audio_file:
+                    audio_content = base64.b64encode(audio_file.read()).decode("utf-8")
 
-                # using pipeline from Langchain
-                llm_chain = LLMChain(prompt=prompt, llm=llm) # create a chain
-                bot_reply = llm_chain.run(question) # run the chain
+                response_data = {
+                    "question": question,
+                    "reply_text": replace_name_reply,
+                    "reply_audio": audio_content
+                }
+                return JSONResponse(content=response_data)
+            except FileNotFoundError:
+                raise HTTPException(status_code=404, detail="File not found")
+        if MODEL_LOADER == "ExLlama":
+            # create cache for inference
+            cache = ExLlamaCache(model)
+            generator = ExLlamaGenerator(model, tokenizer, cache)   # create generator
 
-                # saveReply(question, bot_reply)
-                replace_name_reply = str(bot_reply).replace('<USER>', memories['MC_name'])
+            # Configure generator
+            generator.disallow_tokens([tokenizer.eos_token_id])
+            generator.settings.token_repetition_penalty_max = float(llm_settings['token_repetition_penalty_max'])
+            generator.settings.temperature = float(llm_settings['temperature'])
+            generator.settings.top_p = float(llm_settings['top_p'])
+            generator.settings.top_k = int(llm_settings['top_k'])
+            generator.settings.typical = float(llm_settings['typical'])
+            generator.settings.beams = int(llm_settings['beams'])
+            generator.settings.beam_length = int(llm_settings['beam_length'])
+            generator.settings.token_repetition_penalty_sustain = int(llm_settings['token_repetition_penalty_sustain'])
+            generator.settings.token_repetition_penalty_decay = int(llm_settings['token_repetition_penalty_decay'])
 
-                print(f"{character['char_name']}:{replace_name_reply}")
+            question = ChatModel.questions
+            template = setTemplate() # set and execute the right template of the models
+            prompt = template.format(question=question)
 
-                # Insert the chat history
-                memories['history'].append(f"You: {question}")
-                memories['history'].append(f"{character['char_name']}:{replace_name_reply}")
+            print("max_new_tokens:", llm_settings['max_new_tokens'])
 
-                # Save the chat history to a JSON file
-                with open(os.path.join(project_path, "configs/memories.json"), "w", encoding='utf-8') as outfile:
-                    json.dump(memories, outfile, ensure_ascii=False, indent=2)
+            output = generator.generate_simple(prompt, max_new_tokens=int(llm_settings['max_new_tokens']))
 
-                if tts_settings['tts_type'] == "MoeTTS":
-                    # MoeTTS
-                    synthesize(text=LANGUAGE+replace_name_reply+LANGUAGE, speed=float(SPEED), out_path="reply.wav", speaker_id=int(SPEAKER_ID))
+            replace_name_reply = str(output[len(prompt):]).replace('<USER>', memories['MC_name'])
 
-                elif tts_settings['tts_type'] == "EdgeTTS":
-                    # "voice": "en-US-AnaNeural",
-                    # "pitch": "+0Hz",
-                    # "rate":"+0%",
-                    # "volume": "+0%"
-                    # EdgeTTS
-                    run_tts(
-                        replace_name_reply,
-                        VOICE,
-                        RATE,
-                        VOLUME,
-                        PITCH,
-                        output_file="reply.wav"
-                    )
+            print(f"{character['char_name']}:{replace_name_reply}")
 
-                file_path = os.path.join(project_path, "reply.wav")
+            # Insert the chat history
+            memories['history'].append(f"You: {question}")
+            memories['history'].append(f"{character['char_name']}:{replace_name_reply}")
 
-                try:
-                    with open(file_path, "rb") as audio_file:
-                        audio_content = base64.b64encode(audio_file.read()).decode("utf-8")
+            # Save the chat history to a JSON file
+            with open(os.path.join(project_path, "configs/memories.json"), "w", encoding='utf-8') as outfile:
+                json.dump(memories, outfile, ensure_ascii=False, indent=2)
 
-                    response_data = {
-                        "question": question,
-                        "reply_text": replace_name_reply,
-                        "reply_audio": audio_content
-                    }
-                    return JSONResponse(content=response_data)
-                except FileNotFoundError:
-                    raise HTTPException(status_code=404, detail="File not found")
-                
-            elif MODEL_LOADER == "ExLlama":
-                # create cache for inference
-                cache = ExLlamaCache(model)
-                generator = ExLlamaGenerator(model, tokenizer, cache)   # create generator
+            if tts_settings['tts_type'] == "MoeTTS":
+                # MoeTTS
+                synthesize(text=LANGUAGE+replace_name_reply+LANGUAGE, speed=float(SPEED), out_path="reply.wav", speaker_id=int(SPEAKER_ID))
 
-                # Configure generator
-                # generator.disallow_tokens([tokenizer.eos_token_id])
-                generator.settings.token_repetition_penalty_max = float(llm_settings['token_repetition_penalty_max'])
-                generator.settings.temperature = float(llm_settings['temperature'])
-                generator.settings.top_p = float(llm_settings['top_p'])
-                generator.settings.top_k = int(llm_settings['top_k'])
-                generator.settings.typical = float(llm_settings['typical'])
-                generator.settings.beams = int(llm_settings['beams'])
-                generator.settings.beam_length = int(llm_settings['beam_length'])
-                generator.settings.token_repetition_penalty_sustain = int(llm_settings['token_repetition_penalty_sustain'])
-                generator.settings.token_repetition_penalty_decay = int(llm_settings['token_repetition_penalty_decay'])
+            elif tts_settings['tts_type'] == "EdgeTTS":
+                # "voice": "en-US-AnaNeural",
+                # "pitch": "+0Hz",
+                # "rate":"+0%",
+                # "volume": "+0%"
+                # EdgeTTS
+                run_tts(
+                    replace_name_reply,
+                    VOICE,
+                    RATE,
+                    VOLUME,
+                    PITCH,
+                    output_file="reply.wav"
+                )
 
-                question = ChatModel.questions
-                template = setTemplate() # set and execute the right template of the models
-                prompt = template.format(question=question)
+            file_path = os.path.join(project_path, "reply.wav")
 
-                print("max_new_tokens:", llm_settings['max_new_tokens'])
+            try:
+                with open(file_path, "rb") as audio_file:
+                    audio_content = base64.b64encode(audio_file.read()).decode("utf-8")
 
-                output = generator.generate_simple(prompt, max_new_tokens=int(llm_settings['max_new_tokens']))
+                response_data = {
+                    "question": question,
+                    "reply_text": replace_name_reply,
+                    "reply_audio": audio_content
+                }
 
-                replace_name_reply = str(output[len(prompt):]).replace('<USER>', memories['MC_name'])
-
-                print(f"{character['char_name']}:{replace_name_reply}")
-
-                # Insert the chat history
-                memories['history'].append(f"You: {question}")
-                memories['history'].append(f"{character['char_name']}:{replace_name_reply}")
-
-                # Save the chat history to a JSON file
-                with open(os.path.join(project_path, "configs/memories.json"), "w", encoding='utf-8') as outfile:
-                    json.dump(memories, outfile, ensure_ascii=False, indent=2)
-
-                if tts_settings['tts_type'] == "MoeTTS":
-                    # MoeTTS
-                    synthesize(text=LANGUAGE+replace_name_reply+LANGUAGE, speed=float(SPEED), out_path="reply.wav", speaker_id=int(SPEAKER_ID))
-
-                elif tts_settings['tts_type'] == "EdgeTTS":
-                    # "voice": "en-US-AnaNeural",
-                    # "pitch": "+0Hz",
-                    # "rate":"+0%",
-                    # "volume": "+0%"
-                    # EdgeTTS
-                    run_tts(
-                        replace_name_reply,
-                        VOICE,
-                        RATE,
-                        VOLUME,
-                        PITCH,
-                        output_file="reply.wav"
-                    )
-
-                file_path = os.path.join(project_path, "reply.wav")
-
-                try:
-                    with open(file_path, "rb") as audio_file:
-                        audio_content = base64.b64encode(audio_file.read()).decode("utf-8")
-
-                    response_data = {
-                        "question": question,
-                        "reply_text": replace_name_reply,
-                        "reply_audio": audio_content
-                    }
-
-                    return JSONResponse(content=response_data)
-                except FileNotFoundError:
-                    raise HTTPException(status_code=404, detail="File not found")
+                return JSONResponse(content=response_data)
+            except FileNotFoundError:
+                raise HTTPException(status_code=404, detail="File not found")
         else:
-            raise HTTPException(status_code=404, detail=f"Model Type Not Found: {MODEL_TYPE}")
+            raise HTTPException(status_code=404, detail="Model Loader not found")
+
     except Exception as e:
         raise HTTPException(status_code=404, detail=f"{str(e)}, Please Initialize config before chatting")
 
@@ -333,6 +325,7 @@ def upload_character(file: UploadFile):
 
 @llm_router.get("/memories")
 def get_memories():
+    loadConfigs()
     try:
         return memories
     except Exception as e:
@@ -340,6 +333,7 @@ def get_memories():
 
 @llm_router.delete("/memories")
 def delete_memories():
+    loadConfigs()
     try:
         memories['history'] = []
         with open(os.path.join(project_path, "configs/memories.json"), "w", encoding='utf-8') as outfile:
@@ -365,6 +359,7 @@ def get_llm_settings():
 
 @setings_router.put("/llm_settings", response_model=UpdateLlm)
 def update_llm_settings(llm: UpdateLlm):
+    loadConfigs()
     try:
         with open(os.path.join(project_path, "configs/llm_settings.json"), "w", encoding='utf-8') as outfile:
             json.dump(json.loads(llm.json()), outfile, ensure_ascii=False, indent=2)
@@ -386,9 +381,9 @@ def llm_loader_settings():
 def llm_loader_settings(system: SystemSchema):
     """
     template_type: # for now is 'pygmalion' and 'prompt'
-    model_type: # GPTQ
     model_loader: # AutoGPTQ, HuggingFaceBig, ExLlama
     """
+    loadConfigs()
     try:
         with open(os.path.join(project_path, "configs/llm_loader_settings.json"), "w", encoding='utf-8') as outfile:
             json.dump(json.loads(system.json()), outfile, ensure_ascii=False, indent=2)
@@ -409,7 +404,7 @@ def get_tts_settings():
 
 @setings_router.put("/tts_settings", response_model=UpdateTtsModel)
 def update_tts_settings(tts: UpdateTtsModel):
-    
+    loadConfigs()
     try:
         with open(os.path.join(project_path, "configs/tts_settings.json"), "w", encoding='utf-8') as outfile:
             json.dump(json.loads(tts.json()), outfile, ensure_ascii=False, indent=2)
