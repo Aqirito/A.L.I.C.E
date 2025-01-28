@@ -4,7 +4,7 @@ class BaseModelLoader(BaseModel):
     temperature: float
     max_length: int
     max_new_tokens: int
-    top_k: float
+    top_k: int
     top_p: float
     typical_p: float
     repetition_penalty: float

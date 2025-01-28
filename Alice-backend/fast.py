@@ -114,7 +114,7 @@ def init_models():
 
     # load ENV
     env = dotenv_values(".env")
-    MODEL_NAME_OR_PATH = env['MODEL_NAME_OR_PATH']
+    MODEL_NAME_OR_PATH = llm_loader_settings['model_name']
 
     if "/" not in MODEL_NAME_OR_PATH:
         MODEL_NAME_OR_PATH = os.path.abspath(os.path.join("models/LLM", MODEL_NAME_OR_PATH))
@@ -149,7 +149,7 @@ llm_router = APIRouter(
 def chat(ChatModel: ChatModel):
     global pipeline
     try:
-        if MODEL_LOADER == "AutoGPTQ" or MODEL_LOADER == "HuggingFaceBig":
+        if MODEL_LOADER == "AutoGPTQ":
             model.seqlen = 4096
             # Prevent printing spurious transformers error when using pipeline with AutoGPTQ
             logging.set_verbosity(logging.CRITICAL)
@@ -253,7 +253,8 @@ def chat(ChatModel: ChatModel):
 
             # Insert the chat history
             memories['history'].append(f"You: {question}")
-            memories['history'].append(f"{character['char_name']}:{replace_name_reply}")
+            if len(replace_name_reply) < 50:
+                memories['history'].append(f"{character['char_name']}:{replace_name_reply}")
 
             # Save the chat history to a JSON file
             with open(os.path.join(project_path, "configs/memories.json"), "w", encoding='utf-8') as outfile:
@@ -293,6 +294,42 @@ def chat(ChatModel: ChatModel):
                 return JSONResponse(content=response_data)
             except FileNotFoundError:
                 raise HTTPException(status_code=404, detail="File not found")
+
+        if MODEL_LOADER == "HuggingFaceBig":
+
+            question = ChatModel.questions
+            template = setTemplate() # set and execute the right template of the models
+            prompt = template.format(question=question)
+
+            # Encode the input prompt and create attention mask
+            inputs = tokenizer.encode_plus(prompt, return_tensors='pt', padding='longest', truncation=True, max_length=512)
+            input_ids = inputs['input_ids'].to(model.device)
+            attention_mask = inputs['attention_mask'].to(model.device)
+
+            # Generate a response from the model with specified parameters
+            outputs = model.generate(
+                input_ids,
+                # no_repeat_ngram_size=2,
+                attention_mask=attention_mask,
+                # eos_token_id=tokenizer.eos_token_id,
+                # pad_token_id=tokenizer.eos_token_id,
+                max_length=llm_settings["max_length"],
+                temperature=llm_settings["temperature"],
+                top_k=llm_settings["top_k"],
+                top_p=llm_settings["top_p"],
+                do_sample=llm_settings["do_sample"],
+                repetition_penalty=llm_settings["repetition_penalty"],
+                length_penalty=llm_settings["beam_length"]
+            )
+
+            # Decode the generated response
+            response = tokenizer.decode(outputs[0], skip_special_tokens=True)
+            response_data = {
+                "question": question,
+                "reply_text": response
+            }
+
+            return JSONResponse(content=response_data)
         else:
             raise HTTPException(status_code=404, detail="Model Loader not found")
 

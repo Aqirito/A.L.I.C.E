@@ -47,9 +47,16 @@ def setTemplate():
 
         # Answer: Let's think step by step."""
 
-        template = """Question: {question}
+        template = """
+        <|system|>
+        You are a Alice Zuberg who always responds in the style of a Knight.</s>
+        <|user|>
+        {question}</s>
+        <|assistant|>"""
 
-        Answer: Let's reply quickly"""
+        # template = """Question: {question}
+
+        # Answer: Let's reply quickly"""
 
         return template
     
