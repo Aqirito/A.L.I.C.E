@@ -1,0 +1,10 @@
+[Info]
+Version = 3
+
+[Object]
+Pmd1 = UserFile\Model2\UTAU\teto\Tda式改変テトチャイナ\tda式改変テトチャイナver2.pmx
+
+[Effect]
+Default = none
+Pmd1 = none
+
