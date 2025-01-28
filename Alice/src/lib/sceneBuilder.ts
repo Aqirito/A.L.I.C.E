@@ -1,12 +1,18 @@
 // import "babylon-mmd/esm/Loader/pmxLoader";
 // import "babylon-mmd/esm/Runtime/Animation/mmdRuntimeCameraAnimation";
 // import "babylon-mmd/esm/Runtime/Animation/mmdRuntimeModelAnimation";
+import {PmxLoader} from "babylon-mmd/esm/Loader/pmxLoader";
+import {MmdRuntimeCameraAnimation} from "babylon-mmd/esm/Runtime/Animation/mmdRuntimeCameraAnimation";
+import {MmdRuntimeModelAnimation} from "babylon-mmd/esm/Runtime/Animation/mmdRuntimeModelAnimation";
+
+import { registerSceneLoaderPlugin } from "@babylonjs/core/Loading/sceneLoader";
+registerSceneLoaderPlugin(new PmxLoader());
+
 import type { Engine } from "@babylonjs/core";
 import { loadAssetContainerAsync, Vector3, HavokPlugin, Scene } from "@babylonjs/core";
 import { DirectionalLight, HemisphericLight, ShadowGenerator } from "@babylonjs/core";
 import type { MmdMesh } from "babylon-mmd";
-// import { MmdCamera, MmdPhysics, MmdRuntime, StreamAudioPlayer, VmdLoader } from "babylon-mmd";
-import * as BabylonMMD from "babylon-mmd"
+import { MmdCamera, MmdPhysics, MmdRuntime, StreamAudioPlayer, VmdLoader } from "babylon-mmd";
 import havokPhysics from "@babylonjs/havok";
 
 import type { ISceneBuilder } from "$lib/baseRuntime";
@@ -20,7 +26,7 @@ export class SceneBuilder implements ISceneBuilder {
     // Enable Physics
     scene.enablePhysics(new Vector3(0, -9.8 * 10, 0), new HavokPlugin(true, await havokPhysics()));
 
-    const camera = new BabylonMMD.MmdCamera("mmdCamera", new Vector3(0, 10, 0), scene);
+    const camera = new MmdCamera("mmdCamera", new Vector3(0, 10, 0), scene);
 
     const hemisphericLight = new HemisphericLight("HemisphericLight", new Vector3(0, 1, 0), scene);
     hemisphericLight.intensity = 0.3;
@@ -45,15 +51,15 @@ export class SceneBuilder implements ISceneBuilder {
     for (const mesh of mmdMesh.metadata.meshes) mesh.receiveShadows = true;
     shadowGenerator.addShadowCaster(mmdMesh);
 
-    const mmdRuntime = new BabylonMMD.MmdRuntime(scene, new BabylonMMD.MmdPhysics(scene));
+    const mmdRuntime = new MmdRuntime(scene, new MmdPhysics(scene));
     mmdRuntime.register(scene);
 
     mmdRuntime.setCamera(camera);
     const mmdModel = mmdRuntime.createMmdModel(mmdMesh);
 
-    const audioPlayer = new BabylonMMD.StreamAudioPlayer(scene);
+    const audioPlayer = new StreamAudioPlayer(scene);
 
-    const vmdLoader = new BabylonMMD.VmdLoader(scene);
+    const vmdLoader = new VmdLoader(scene);
     const modelMotion = await vmdLoader.loadAsync("model_motion_1", [
       "src/lib/assets/メランコリ・ナイト/メランコリ・ナイト.vmd",
       "src/lib/assets/メランコリ・ナイト/メランコリ・ナイト_表情モーション.vmd",
