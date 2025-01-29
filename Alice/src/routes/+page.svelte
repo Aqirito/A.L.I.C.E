@@ -1,8 +1,8 @@
-<script lang="ts">
-  import type { PageData } from './$types';
-  import { Live2DModel, MotionPriority, SoundManager, config } from 'pixi-live2d-display-lipsyncpatch';
-  import * as PIXI from 'pixi.js';
-  import { onMount } from 'svelte';
+<!-- <script lang="ts">
+	import { BaseRuntime } from '$lib/baseRuntime';
+	import { SceneBuilder } from '$lib/sceneBuilder';
+	import { Engine } from "@babylonjs/core/Engines/engine";
+	import { onMount } from 'svelte';
 
   // expose PIXI to window so that this plugin can reference window.PIXI.Ticker
   window.PIXI = PIXI;
@@ -34,90 +34,121 @@
       width: container.clientWidth
     });
 
-    live2DModel = await Live2DModel.from(cubism4Model);
-    app.stage.addChild(live2DModel);
+		BaseRuntime.Create({
+				canvas,
+				engine,
+				sceneBuilder: new SceneBuilder()
+		}).then(runtime => runtime.run());
+	})
+</script> -->
 
-    live2DModel.scale.set(0.3);
-    let centerX = live2DModel.width / 2;
-    let container_centerX = container.clientWidth / 2;
-    live2DModel.x = live2DModel.x - centerX + container_centerX;
 
-    live2DModel.on('hit', (hitAreaNames: string) => {
-      if (hitAreaNames.includes('body')) {
-        console.log('hit body');
-        var category_name = "idle"; // name of the motion category
-        var animation_index = 0; // index of animation under that motion category [null => random]
-        var priority_number = 3; // if you want to keep the current animation going or move to new animation by force [0: no priority, 1: idle, 2: normal, 3: forced]
-        var audio_link = "https://cdn.jsdelivr.net/gh/RaSan147/pixi-live2d-display@v1.0.3/playground/test.mp3"; //[Optional arg, can be null or empty] [relative or full url path] [mp3 or wav file]
-        var volume = 1.0; //[Optional arg, can be null or empty] [0.0 - 1.0]
-        var expression = 2; //[Optional arg, can be null or empty] [index|name of expression]
-        var resetExpression = true; //[Optional arg, can be null or empty] [true|false] [default: true] [if true, expression will be reset to default after animation is over]
+<!-- <div class="container d-flex justify-content-center">
+		<div id="sceneElement">
 
-        live2DModel.motion(category_name, animation_index, priority_number, {
-          sound: audio_link, 
-          volume: volume, 
-          expression:expression, 
-          resetExpression:resetExpression, 
-          crossOrigin : "anonymous"
-        })
-      }
-    });
-  }
+		</div>
+</div> -->
 
-  // Microphone integration using live2DModel.speak()
-  async function startMicrophone() {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      console.log('Microphone access granted');
-      startRecording(stream);
-    } catch (error) {
-      console.error('Microphone access denied:', error);
+
+
+
+<script lang="ts">
+	import { onMount } from 'svelte';
+	import { createScene } from '$lib/scene';
+	import type { PageData } from './$types';
+	import { fail } from '@sveltejs/kit';
+
+	export let data: PageData
+	let canvas: HTMLCanvasElement;
+	let formElement: HTMLFormElement;
+	let promptInput: string;
+	let isLoading: Boolean = false;
+
+	onMount(() => {
+		createScene(canvas);
+	});
+
+	async function initCofig() {
+		const response = await fetch("api/v1/init_config");
+		
+    if(!response.ok) {
+      throw fail(response.status, {
+        message: response.statusText
+      })
     }
-  }
+		console.log("init_config", await response.json())
+	}
 
-  function startRecording(stream: MediaStream) {
-    recorder = new MediaRecorder(stream);
-    audioChunks = [];
 
-    recorder.ondataavailable = (event) => {
-      audioChunks.push(event.data);
-    };
+	async function initModel() {
+		const response = await fetch("api/v1/init_model");
+		
+    if(!response.ok) {
+      throw fail(response.status, {
+        message: response.statusText
+      })
+    }
+		console.log("init_model", await response.json())
+	}
 
-    recorder.onstop = async () => {
-      const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
-      const base64Audio = await convertBlobToBase64(audioBlob);
-      console.log(base64Audio);
+	async function submitForm() {
+		isLoading = true;
+		
+		let promtJson = {
+			questions: promptInput
+		}
 
-      // Pass the Base64 string to live2DModel.speak()
-      if (live2DModel) {
-        await live2DModel.speak(base64Audio, {
-          volume: 1.0
-        });
-      }
-    };
+		const response = await fetch("api/v1/chat_me", {
+			method: "POST",
+			headers: new Headers({
+        'accept': 'application/json',
+        'Content-Type': 'application/json'
+      }),
+			body: JSON.stringify(promtJson)
+		});
+		
+    if(!response.ok) {
+      throw fail(response.status, {
+        message: response.statusText
+      })
+    }
 
-    recorder.start();
+		isLoading = false;
+		console.log("ASASA", await response.json())
 
-    // Automatically stop recording after 5 seconds
-    setTimeout(() => {
-      recorder?.stop();
-    }, 5000); // Stop after 5 seconds
-  }
 
-  // Convert Blob to Base64 string
-  function convertBlobToBase64(blob: Blob): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result as string);
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    });
-  }
+	} 
+
+
 </script>
 
-<main>
-  <div bind:this={container} id="container">
-    <button on:click="{startMicrophone}">Start Microphone</button>
-    <canvas bind:this={modelViewer} id="modelViewer" style="width: inherit; display: flex; justify-content: center;"></canvas>
-  </div>
-</main>
+<svelte:head>
+	<title>Babylon.js Sveltekit</title>
+	<meta name="description" content="Three.js example app built with Svelte" />
+</svelte:head>
+<div role="group">
+	<button on:click={initCofig}>INITIALIZE LLM CONFIG</button>
+	<button on:click={initModel}>INITIALIZE LLM MODEL</button>
+</div>
+
+<canvas id="canvas" bind:this={canvas} />
+
+<form bind:this={formElement}>
+  <fieldset role="group">
+    <input bind:value={promptInput} name="text" type="text" placeholder="Enter your prompt here" />
+    <button on:click={submitForm} type="submit">Submit</button>
+    <button>
+			<svg class="w-6 h-6 swap-off" fill="none" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+				<path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" />
+			</svg>
+		</button>
+  </fieldset>
+</form>
+
+<style>
+	#canvas {
+		display: block;
+		width: 100%;
+		height: 100%;
+	}
+</style>
