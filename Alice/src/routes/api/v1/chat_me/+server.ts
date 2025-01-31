@@ -4,7 +4,7 @@ import type { RequestHandler } from './$types';
 export const POST: RequestHandler = async ({ fetch, request }) => {
   const resultFetched = await request.json();
 
-  const res = await fetch(`http://localhost:8000/llm/chat`,
+  const res = await fetch(`http://localhost:8000/chat`,
     {
       method: 'POST',
       headers: new Headers({
