@@ -1,7 +1,7 @@
 import havokPhysics from "@babylonjs/havok";
 import { MmdCamera, MmdMesh, MmdPhysics, MmdRuntime, StreamAudioPlayer, VmdLoader } from "../../node_modules/babylon-mmd";
 import { loadAssetContainerAsync, Vector3, HavokPlugin, Scene, Engine, HemisphericLight, DirectionalLight, ShadowGenerator } from "@babylonjs/core";
-
+import { setResponseAnimation } from "./stores";
 
 export const createScene = async (canvas: HTMLCanvasElement) => {
   const engine = new Engine(canvas, false, {
@@ -21,7 +21,7 @@ export const createScene = async (canvas: HTMLCanvasElement) => {
 
   const scene = new Scene(engine);
 
-  scene.enablePhysics(new Vector3(0, -9.8 * 10, 0), new HavokPlugin(true, await havokPhysics()));
+  scene.enablePhysics(new Vector3(0, -9, 0), new HavokPlugin(true, await havokPhysics()));
 
   const camera = new MmdCamera("mmdCamera", new Vector3(0, 10, 0), scene);
 
@@ -61,11 +61,15 @@ export const createScene = async (canvas: HTMLCanvasElement) => {
     // "assets/メランコリ・ナイト/メランコリ・ナイト.vmd",
     // "assets/メランコリ・ナイト/メランコリ・ナイト_表情モーション.vmd",
     // "assets/メランコリ・ナイト/メランコリ・ナイト_リップモーション.vmd"
-    "assets/Intro/1こちら左.vmd" // nice intro
+    // "assets/Intro/1こちら左.vmd" // nice intro
     // "assets/Intro/1ニコ.vmd" // smile intro
     // "assets/Intro/1ホケー.vmd" // angry
     // "assets/Intro/1まったく.vmd" // pissed 2
     // "assets/Intro/1やったー.vmd" // jump happy
+    // "assets/yurayura/沢山.vmd" // intro hand round
+    // "assets/yurayura/指さし.vmd" // mengolok tutup sebealh mata
+    // "assets/yurayura/小さい.vmd",
+    "assets/idle/Lumine Idle cycle.vmd"
 
   ]);
   // const cameraMotion = await vmdLoader.loadAsync("camera_motion_1",
@@ -91,26 +95,26 @@ export const createScene = async (canvas: HTMLCanvasElement) => {
     "assets/Intro/1こら.vmd"
   ]);
 
-  setInterval(() => {
-    mmdRuntime.setAudioPlayer(null);
-    mmdModel.removeAnimation(0);
-    const motionList = [idleMotion1, idleMotion2, modelMotion];
-    const randomMotion = motionList[Math.floor(Math.random() * motionList.length)];
-    mmdModel.addAnimation(randomMotion);
+  // setInterval(() => {
+  //   mmdRuntime.setAudioPlayer(null);
+  //   mmdModel.removeAnimation(0);
+  //   const motionList = [idleMotion1, idleMotion2, modelMotion];
+  //   const randomMotion = motionList[Math.floor(Math.random() * motionList.length)];
+  //   mmdModel.addAnimation(randomMotion);
 
-    if (randomMotion == idleMotion1) {
-      mmdModel.setAnimation("idle_motion_1");
-    }
-    if (randomMotion == idleMotion2) {
-      mmdModel.setAnimation("idle_motion_2");
-    }
-    if (randomMotion == modelMotion) {
-      mmdModel.setAnimation("model_motion_1");
-    }
-    mmdRuntime.setManualAnimationDuration(10000);
-    mmdRuntime.seekAnimation(0);
-    mmdRuntime.playAnimation();
-  }, 10000);
+  //   if (randomMotion == idleMotion1) {
+  //     mmdModel.setAnimation("idle_motion_1");
+  //   }
+  //   if (randomMotion == idleMotion2) {
+  //     mmdModel.setAnimation("idle_motion_2");
+  //   }
+  //   if (randomMotion == modelMotion) {
+  //     mmdModel.setAnimation("model_motion_1");
+  //   }
+  //   mmdRuntime.setManualAnimationDuration(10000);
+  //   mmdRuntime.seekAnimation(0);
+  //   mmdRuntime.playAnimation();
+  // }, 10000);
 
 
   scene.onPointerDown = function (evt, pickResult) {
@@ -134,6 +138,18 @@ export const createScene = async (canvas: HTMLCanvasElement) => {
       }
     }
   };
+
+
+  setResponseAnimation.subscribe((val) => {
+    console.log(val)
+    switch(val.animation_type) {
+      case "response":
+        animate(pissedMotion1, "pissed_motion_1")
+        break;
+      case "waiting_for_response":
+        animate(pissedMotion1, "pissed_motion_1")
+    }
+  })
 
   function animate(motion: any, motion_name: string) {
     mmdRuntime.setAudioPlayer(null)
@@ -169,10 +185,17 @@ export const createScene = async (canvas: HTMLCanvasElement) => {
     // }
   }
 
-
   mmdRuntime.playAnimation();
 
   engine.runRenderLoop(() => {
+
+    switch(mmdRuntime.isAnimationPlaying) {
+      case false:
+        mmdRuntime.pauseAnimation()
+        mmdRuntime.seekAnimation(0)
+        break;
+    }
+
     scene.render();
   });
 
