@@ -17,5 +17,8 @@ export default defineConfig({
     alias: {
       'babylon-mmd': path.resolve(__dirname, './node_modules/babylon-mmd')
     }
+  },
+  server: {
+    allowedHosts: ['alice.aqirito.online']
   }
 });
