@@ -62,7 +62,10 @@
 	let canvas: HTMLCanvasElement;
 	let formElement: HTMLFormElement;
 	let promptInput: string;
-	let isLoading: Boolean = false;
+	let isLoading: boolean = false;
+	let textAreaEl: HTMLTextAreaElement;
+
+	import { setResponseAnimation } from '$lib/stores';
 
 	onMount(() => {
 		createScene(canvas);
@@ -95,10 +98,11 @@
 		isLoading = true;
 		
 		let promtJson = {
-			questions: promptInput
+			prompts: promptInput,
+			secret: ""
 		}
 
-		const response = await fetch("api/v1/chat_me", {
+		let response: Response = await fetch("api/v1/chat_me", {
 			method: "POST",
 			headers: new Headers({
         'accept': 'application/json',
@@ -112,13 +116,35 @@
         message: response.statusText
       })
     }
-
 		isLoading = false;
-		console.log("ASASA", await response.json())
 
+		if (!response.body) {
+			throw new Error("Response body is nul")
+		}
+		const reader = response.body.getReader();
+		const decoder = new TextDecoder('utf-8');
 
-	} 
+		let result = '';
+		while (true) {
+			const { done, value } = await reader.read();
 
+			if (done) break;
+
+			result += decoder.decode(value, { stream: true });
+			
+			let resultArray: any[] = JSON.parse(result)
+
+			textAreaEl.value = resultArray.join('')
+		}
+
+		textAreaEl.style.height = 'auto';
+		textAreaEl.style.height = textAreaEl.scrollHeight + 'px';
+
+		setResponseAnimation.set({
+			animation_type: "response",
+		})
+
+	}
 
 </script>
 
@@ -126,17 +152,18 @@
 	<title>Babylon.js Sveltekit</title>
 	<meta name="description" content="Three.js example app built with Svelte" />
 </svelte:head>
-<div role="group">
+<!-- <div role="group">
 	<button on:click={initCofig}>INITIALIZE LLM CONFIG</button>
 	<button on:click={initModel}>INITIALIZE LLM MODEL</button>
-</div>
-
+</div> -->
 <canvas id="canvas" bind:this={canvas} />
+
+<textarea bind:this={textAreaEl}></textarea>
 
 <form bind:this={formElement}>
   <fieldset role="group">
     <input bind:value={promptInput} name="text" type="text" placeholder="Enter your prompt here" />
-    <button on:click={submitForm} type="submit">Submit</button>
+    <button disabled={isLoading} on:click={submitForm} type="submit">Submit</button>
     <button>
 			<svg class="w-6 h-6 swap-off" fill="none" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
 				<path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" />
