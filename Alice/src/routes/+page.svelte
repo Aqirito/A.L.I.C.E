@@ -15,12 +15,10 @@
   let recorder: MediaRecorder | null = null;
   let audioChunks: Blob[] = [];
 
-  SoundManager.volume = 0.9;
+  SoundManager.volume = 1.0;
   config.logLevel = config.LOG_LEVEL_ERROR;
   config.sound = true;
   config.motionSync = true;
-
-  const cubism4Model = "https://cdn.jsdelivr.net/gh/guansss/pixi-live2d-display@0.4.0/test/assets/shizuku/shizuku.model.json";
 
   onMount(() => {
     loadModel();
@@ -30,11 +28,13 @@
     let app = new PIXI.Application({
       view: modelViewer,
       autoStart: true,
-      backgroundColor: 0x333333,
+      // backgroundColor: 0x333333,
+      antialias: true,
+      backgroundAlpha: 0,
       width: container.clientWidth
     });
 
-    live2DModel = await Live2DModel.from(cubism4Model);
+    live2DModel = await Live2DModel.from('Resources/Haru/Haru.model3.json')
     app.stage.addChild(live2DModel);
 
     live2DModel.scale.set(0.3);
@@ -43,21 +43,22 @@
     live2DModel.x = live2DModel.x - centerX + container_centerX;
 
     live2DModel.on('hit', (hitAreaNames: string) => {
-      if (hitAreaNames.includes('body')) {
+      console.log(hitAreaNames);
+      if (hitAreaNames[0].toUpperCase() == "BODY") {
         console.log('hit body');
-        var category_name = "idle"; // name of the motion category
-        var animation_index = 0; // index of animation under that motion category [null => random]
-        var priority_number = 3; // if you want to keep the current animation going or move to new animation by force [0: no priority, 1: idle, 2: normal, 3: forced]
-        var audio_link = "https://cdn.jsdelivr.net/gh/RaSan147/pixi-live2d-display@v1.0.3/playground/test.mp3"; //[Optional arg, can be null or empty] [relative or full url path] [mp3 or wav file]
-        var volume = 1.0; //[Optional arg, can be null or empty] [0.0 - 1.0]
-        var expression = 2; //[Optional arg, can be null or empty] [index|name of expression]
-        var resetExpression = true; //[Optional arg, can be null or empty] [true|false] [default: true] [if true, expression will be reset to default after animation is over]
+        let category_name = "TapBody"; // name of the motion category
+        let animation_index = 2; // index of animation under that motion category [null => random]
+        let priority_number = 3; // if you want to keep the current animation going or move to new animation by force [0: no priority, 1: idle, 2: normal, 3: forced]
+        let audio_link = "Resources/Haru/sounds/haru_Info_14.wav"; //[Optional arg, can be null or empty] [relative or full url path] [mp3 or wav file]
+        let volume = 1.0; //[Optional arg, can be null or empty] [0.0 - 1.0]
+        let expression = 1; //[Optional arg, can be null or empty] [index|name of expression]
+        let resetExpression = true; //[Optional arg, can be null or empty] [true|false] [default: true] [if true, expression will be reset to default after animation is over]
 
         live2DModel.motion(category_name, animation_index, priority_number, {
-          sound: audio_link, 
-          volume: volume, 
-          expression:expression, 
-          resetExpression:resetExpression, 
+          sound: audio_link,
+          volume: volume,
+          expression:expression,
+          resetExpression:resetExpression,
           crossOrigin : "anonymous"
         })
       }
