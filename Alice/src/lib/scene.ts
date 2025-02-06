@@ -1,27 +1,30 @@
+import "babylon-mmd/esm/Runtime/Animation/mmdRuntimeCameraAnimation";
+import "babylon-mmd/esm/Runtime/Animation/mmdRuntimeModelAnimation";
+
 import havokPhysics from "@babylonjs/havok";
 import { MmdCamera, MmdMesh, MmdPhysics, MmdRuntime, StreamAudioPlayer, VmdLoader } from "../../node_modules/babylon-mmd";
 import { loadAssetContainerAsync, Vector3, HavokPlugin, Scene, Engine, HemisphericLight, DirectionalLight, ShadowGenerator } from "@babylonjs/core";
 import { setResponseAnimation } from "./stores";
 
 export const createScene = async (canvas: HTMLCanvasElement) => {
-  const engine = new Engine(canvas, false, {
-    preserveDrawingBuffer: false,
-    stencil: true,
-    antialias: true,
-    alpha: true,
-    premultipliedAlpha: false,
+  const engine = new Engine(canvas, true, {
+    // preserveDrawingBuffer: true,
+    // stencil: true,
+    // antialias: true,
+    // alpha: true,
+    // premultipliedAlpha: true,
     powerPreference: "high-performance",
-    doNotHandleTouchAction: false,
-    doNotHandleContextLost: true,
+    // doNotHandleTouchAction: false,
+    // doNotHandleContextLost: false,
     audioEngine: true,
-    adaptToDeviceRatio: true,
+    // adaptToDeviceRatio: true,
     useHighPrecisionMatrix: true,
     useHighPrecisionFloats: true
   }, true);
 
   const scene = new Scene(engine);
 
-  scene.enablePhysics(new Vector3(0, -9, 0), new HavokPlugin(true, await havokPhysics()));
+  scene.enablePhysics(new Vector3(0, 19.8, 0), new HavokPlugin(true, await havokPhysics()));
 
   const camera = new MmdCamera("mmdCamera", new Vector3(0, 10, 0), scene);
 
@@ -71,7 +74,13 @@ export const createScene = async (canvas: HTMLCanvasElement) => {
     // "assets/yurayura/小さい.vmd",
     "assets/idle/Lumine Idle cycle.vmd"
 
-  ]);
+  ],
+    (event) => updateLoadingText(2, `Loading motion... ${event.loaded}/${event.total} (${Math.floor(event.loaded * 100 / event.total)}%)`)
+  );
+  function updateLoadingText(step: number, message: string) {
+    console.log(`Step ${step}: ${message}`);
+  }
+
   // const cameraMotion = await vmdLoader.loadAsync("camera_motion_1",
   //     "assets/メランコリ・ナイト/メランコリ・ナイト_カメラ.vmd"
   // );
@@ -79,8 +88,8 @@ export const createScene = async (canvas: HTMLCanvasElement) => {
   // camera.addAnimation(cameraMotion);
   // camera.setAnimation("camera_motion_1");
 
-  mmdModel.addAnimation(modelMotion);
-  mmdModel.setAnimation("model_motion_1");
+  // mmdModel.addAnimation(modelMotion);
+  // mmdModel.setAnimation("model_motion_1");
 
   const idleMotion1 = await vmdLoader.loadAsync("idle_motion_1", [
     "assets/Idle-Animations-Pack/Air-Scent-Idle-Animation/Smelling-Something-in-the-Air.vmd"
@@ -185,17 +194,32 @@ export const createScene = async (canvas: HTMLCanvasElement) => {
     // }
   }
 
-  mmdRuntime.playAnimation();
+  console.log(mmdRuntime.isAnimationPlaying)
+  mmdModel.addAnimation(modelMotion);
+  mmdModel.setAnimation("model_motion_1");
+  mmdRuntime.playAnimation().then((val) => {
+    console.log("val", val)
+    console.log(mmdRuntime.isAnimationPlaying)
+  }).catch((err) => {
+    console.log("catch", err)
+  });
 
+  console.log(mmdModel.runtimeAnimations)
+
+  if (mmdRuntime.currentFrameTime) {}
+
+  switch(mmdRuntime.isAnimationPlaying) {
+    case false:
+      console.log("not running", mmdRuntime.isAnimationPlaying)
+      // mmdModel.removeAnimation(0)
+      // mmdModel.addAnimation(modelMotion);
+      // mmdModel.setAnimation("model_motion_1");
+      // mmdRuntime.seekAnimation(0)
+      // mmdRuntime.playAnimation();
+      break;
+  }
+  
   engine.runRenderLoop(() => {
-
-    switch(mmdRuntime.isAnimationPlaying) {
-      case false:
-        mmdRuntime.pauseAnimation()
-        mmdRuntime.seekAnimation(0)
-        break;
-    }
-
     scene.render();
   });
 
